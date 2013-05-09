@@ -1,4 +1,5 @@
 snug
 ====
 
-DNA sequencing QC application for rapidly viewing mapped reads at multiple sites from a SAM/BAM file 
+Interactive user interface written in Java built to streamline the quality control process of visually inspecting lists of variant sites called from short read sequencing data.
+
