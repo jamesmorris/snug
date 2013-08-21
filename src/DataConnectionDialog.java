@@ -21,7 +21,7 @@ public class DataConnectionDialog extends JDialog implements ActionListener {
         bamPanel.add(new JLabel("BAM file: "));
         bamField = new JTextField(20);
         bamPanel.add(bamField);
-        JButton bamButton = new JButton("Select BAM");
+        JButton bamButton = new JButton("Select BAM(s)");
         bamButton.addActionListener(this);
         bamPanel.add(bamButton);
         contents.add(bamPanel);
@@ -64,20 +64,23 @@ public class DataConnectionDialog extends JDialog implements ActionListener {
             refFile = refField.getText();
             
             this.dispose();
-        }else if (e.getActionCommand().equals("Select BAM")) {
+        }else if (e.getActionCommand().equals("Select BAM(s)")) {
 //            JFileChooser jfc = new JFileChooser("user.dir");
+        	// for testing only
             JFileChooser jfc = new JFileChooser("/Users/jm20/Documents/snug");
             if (jfc.showOpenDialog(this) == JFileChooser.APPROVE_OPTION){
             	bamField.setText(jfc.getSelectedFile().getAbsolutePath());
             }
         } else if (e.getActionCommand().equals("Select Variants")) {
 //        	JFileChooser jfc = new JFileChooser("user.dir");
+        	// for testing only
         	JFileChooser jfc = new JFileChooser("/Users/jm20/Documents/snug");
             if (jfc.showOpenDialog(this) == JFileChooser.APPROVE_OPTION){
                 varField.setText(jfc.getSelectedFile().getAbsolutePath());
             }
         } else if (e.getActionCommand().equals("Select Reference")) {
-//        	JFileChooser jfc = new JFileChooser("user.dir");                  
+//        	JFileChooser jfc = new JFileChooser("user.dir");    
+        	// for testing only
         	JFileChooser jfc = new JFileChooser("/Users/jm20/Documents/snug");
             if (jfc.showOpenDialog(this) == JFileChooser.APPROVE_OPTION){
                 refField.setText(jfc.getSelectedFile().getAbsolutePath());
