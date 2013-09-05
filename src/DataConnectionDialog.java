@@ -68,6 +68,10 @@ public class DataConnectionDialog extends JDialog implements ActionListener {
 //            JFileChooser jfc = new JFileChooser("user.dir");
         	// for testing only
             JFileChooser jfc = new JFileChooser("/Users/jm20/Documents/snug");
+            jfc.setDialogTitle("Select BAM(s)");
+            jfc.setApproveButtonText("Select BAM(s)");
+            jfc.setApproveButtonToolTipText("Select your indexed BAM file or file containing a list of paths to your BAM files");
+            
             if (jfc.showOpenDialog(this) == JFileChooser.APPROVE_OPTION){
             	bamField.setText(jfc.getSelectedFile().getAbsolutePath());
             }
@@ -75,6 +79,10 @@ public class DataConnectionDialog extends JDialog implements ActionListener {
 //        	JFileChooser jfc = new JFileChooser("user.dir");
         	// for testing only
         	JFileChooser jfc = new JFileChooser("/Users/jm20/Documents/snug");
+        	jfc.setDialogTitle("Select Variant File");
+            jfc.setApproveButtonText("Select Variant File");
+            jfc.setApproveButtonToolTipText("Select your list of variant sites to visualise");
+        	
             if (jfc.showOpenDialog(this) == JFileChooser.APPROVE_OPTION){
                 varField.setText(jfc.getSelectedFile().getAbsolutePath());
             }
@@ -82,6 +90,10 @@ public class DataConnectionDialog extends JDialog implements ActionListener {
 //        	JFileChooser jfc = new JFileChooser("user.dir");    
         	// for testing only
         	JFileChooser jfc = new JFileChooser("/Users/jm20/Documents/snug");
+        	jfc.setDialogTitle("Select Reference File");
+            jfc.setApproveButtonText("Select Reference File");
+            jfc.setApproveButtonToolTipText("Select your indexed reference file");
+
             if (jfc.showOpenDialog(this) == JFileChooser.APPROVE_OPTION){
                 refField.setText(jfc.getSelectedFile().getAbsolutePath());
             }
