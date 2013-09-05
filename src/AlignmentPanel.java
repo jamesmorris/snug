@@ -4,12 +4,14 @@ import java.awt.Dimension;
 import java.awt.FontMetrics;
 import java.awt.Graphics;
 import java.awt.Graphics2D;
+import java.awt.event.MouseEvent;
 import java.awt.geom.Rectangle2D;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
 import javax.swing.JPanel;
+import javax.swing.ToolTipManager;
 
 import net.sf.picard.reference.IndexedFastaSequenceFile;
 import net.sf.picard.reference.ReferenceSequence;
@@ -32,6 +34,8 @@ public class AlignmentPanel extends JPanel {
 	// interface options
 	private boolean hideBases;
 	
+	ArrayList<BasePosition> baseCounts;
+	
 	public AlignmentPanel(int pixPerBase, int offset, ArrayList<SAMRecord> reads, Variant v, int height, IndexedFastaSequenceFile ref) {
 		super();
 		this.pixPerBase = pixPerBase;
@@ -40,6 +44,16 @@ public class AlignmentPanel extends JPanel {
 		this.variant = v;
 		this.trackHeight = height;
 		this.reference = ref;
+		
+		ToolTipManager.sharedInstance().registerComponent(this);
+		ToolTipManager.sharedInstance().setDismissDelay(10000);
+		ToolTipManager.sharedInstance().setInitialDelay(0);
+		ToolTipManager.sharedInstance().setReshowDelay(0);
+			
+	}
+
+	public AlignmentPanel() {
+		// TODO Auto-generated constructor stub
 	}
 
 	public void paintComponent(Graphics g) {
@@ -48,11 +62,12 @@ public class AlignmentPanel extends JPanel {
 		drawAlignment(g2);
 	}
 	
-	
-	
 	private void drawAlignment(Graphics2D g2) {
     	if (reads != null) {    		
     		int ypos = 15;
+    		
+    		baseCounts = new ArrayList<BasePosition>();
+    		
     		g2.setColor(Color.black);
             for (SAMRecord read : reads) {            	
             	drawSequence(g2, read, ypos, offset);
@@ -94,17 +109,15 @@ public class AlignmentPanel extends JPanel {
 			AlignmentBlock block = blocks.get(i);
 			int blockStart = block.getReadStart();
 			int distance2Variant = block.getReferenceStart() - variant.getPos();			
-			
 			for(int j=0; j<block.getLength(); j++) {
 			
-				int readPos = blockStart-1+j;
-				int currentPosition = ((distance2Variant + j) + variant.getPos());
-				
+				int readPos = blockStart-1+j;				
+				int currentPosition = ((distance2Variant + j) + variant.getPos());				
 				ReferenceSequence refSeq = reference.getSubsequenceAt(variant.getChr(), currentPosition, currentPosition);
 				byte[] bases = refSeq.getBases();				
 				String refBase = String.valueOf((char) bases[0]);
 				String readBase = readSeq.substring(readPos, readPos+1);
-				basePosition = (distance2Variant + j) * pixPerBase;
+				basePosition = (distance2Variant + j) * pixPerBase;				
 				xpos = offset + basePosition;
 				
 				// shade the background of the base on quality
@@ -118,7 +131,21 @@ public class AlignmentPanel extends JPanel {
 				} else {
 					baseColour(g2, readBase);
 				}				
-				g2.drawString(readBase, xpos, ypos);				
+				
+				// update the base counts for the current position
+				int position = xpos / pixPerBase;
+				
+				// first test if the base is in view
+				if (xpos >= 0) {
+					try {
+						baseCounts.get(position).addBase(readBase);		
+					} catch (IndexOutOfBoundsException e) {
+						baseCounts.add(position, new BasePosition());
+						baseCounts.get(position).addBase(readBase);
+					}
+					
+					g2.drawString(readBase, xpos, ypos);	
+				}
 			}			
 		}
 	
@@ -167,4 +194,15 @@ public class AlignmentPanel extends JPanel {
 		this.hideBases = b;		
 	}
 
+    @Override
+    public String getToolTipText(MouseEvent e) {
+		int basePosition = e.getX() / pixPerBase;
+		return getBaseCounts(basePosition);
+    }
+
+	private String getBaseCounts(int basePosition) {
+		BasePosition bp = baseCounts.get(basePosition);
+		return "A:" + bp.getA() + " T" + bp.getT() + " C:" + bp.getC() + " G:" + bp.getG();
+	}
+	
 }
