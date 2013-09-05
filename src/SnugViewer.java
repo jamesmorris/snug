@@ -1,33 +1,51 @@
-import javax.imageio.ImageIO;
-import javax.swing.*;
-import javax.swing.border.Border;
-import javax.swing.border.EmptyBorder;
-import javax.swing.border.LineBorder;
+import javax.swing.BorderFactory;
+import javax.swing.Box;
+import javax.swing.BoxLayout;
+import javax.swing.JButton;
+import javax.swing.JComponent;
+import javax.swing.JFileChooser;
+import javax.swing.JFrame;
+import javax.swing.JLabel;
+import javax.swing.JMenu;
+import javax.swing.JMenuBar;
+import javax.swing.JMenuItem;
+import javax.swing.JOptionPane;
+import javax.swing.JPanel;
+import javax.swing.JScrollPane;
+import javax.swing.JTextArea;
+import javax.swing.KeyStroke;
+
+import java.awt.Color;
+import java.awt.Component;
+import java.awt.Dimension;
+import java.awt.Toolkit;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
+import java.awt.event.ComponentEvent;
+import java.awt.event.ComponentListener;
+import java.awt.event.KeyEvent;
+import java.awt.event.MouseEvent;
+import java.awt.event.MouseMotionListener;
+
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
+import java.io.FileReader;
+import java.io.IOException;
+import java.io.PrintStream;
+
+import java.sql.Timestamp;
+import java.text.SimpleDateFormat;
+import java.util.Date;
+import java.util.HashMap;
+import java.util.ListIterator;
+import java.util.ArrayList;
 
 import net.sf.samtools.SAMFileReader;
 import net.sf.samtools.SAMRecord;
 import net.sf.samtools.SAMRecordIterator;
 import net.sf.picard.reference.IndexedFastaSequenceFile;
-import net.sf.picard.reference.ReferenceSequence;
-
-import java.awt.event.*;
-import java.awt.geom.Ellipse2D;
-import java.awt.image.BufferedImage;
-import java.awt.*;
-import java.io.*;
-import java.text.NumberFormat;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.Enumeration;
-import java.util.HashMap;
-import java.util.Hashtable;
-import java.util.Iterator;
-import java.util.List;
-import java.util.ListIterator;
-import java.util.Locale;
-import java.util.ArrayList;
-import java.util.LinkedList;
-import java.util.concurrent.TimeUnit;
 
 
 public class SnugViewer extends JFrame implements ActionListener, ComponentListener {
@@ -39,59 +57,47 @@ public class SnugViewer extends JFrame implements ActionListener, ComponentListe
 	String plottedSNP = null;
 	private File output;
 	private ArrayList<Variant> variantList;
-	private Variant currentVariantinList;
-	private Variant currentVariant = null;
 	private int currentVariantIndex;
 	private Integer displayVariantIndex = null;
-	private boolean backVariant = false;
-	private boolean bamFile = false;
-	private boolean variantFile = false;
-	private boolean endOfList;
 	private HashMap<Variant, Integer> listScores = new HashMap<Variant, Integer>();
-	JFileChooser jfc;
 	private JPanel scorePanel;
-	private JPanel messagePanel;
+	private JScrollPane messagePanel;
+	private JTextArea messageText;
 	private JPanel controlsPanel;
-	private JLabel message;
 	private JButton yesButton;
 	private JButton maybeButton;
 	private JButton noButton;
 	private JButton backButton;
 	private JMenu fileMenu;
 	private JMenuItem loadFiles;
-	private JMenuItem showLogItem;
-	public static LoggingDialog ld;
 	DataConnectionDialog dcd;
 	
 	JMenuBar mb;
 	
-	// untested below
 	private JPanel trackContainer;
-	
-	private JCheckBoxMenuItem hideBases;
-	
+	private JPanel nameContainer;
+	private String refName;
 	JPanel contentPanel;
 
-	SAMFileReader bamReader;
 	private ArrayList<SAMFileReader> bams;
+	private ArrayList<String> bamNames;
 
 	private boolean backSNP;
 	
 	private IndexedFastaSequenceFile referenceFile;
 	
-
+	// set the space given to each base as it is drawn
 	int pixPerBase = 15;
-	
 
 	public static void main(String[] args) {
-
 		new SnugViewer();
-
 	}
 
 	SnugViewer() {
 		super("Snug...");
 
+//		addMouseMotionListener(this);
+		
 		dcd = new DataConnectionDialog(this);
 		mb = new JMenuBar();
 
@@ -101,13 +107,7 @@ public class SnugViewer extends JFrame implements ActionListener, ComponentListe
 		loadFiles = new JMenuItem("Load Files");
 		loadFiles.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_B, menumask));
 		loadFiles.addActionListener(this);
-		fileMenu.add(loadFiles);
-		
-		hideBases = new JCheckBoxMenuItem("Hide Bases");
-		hideBases.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_F, menumask));
-		hideBases.addActionListener(this);
-		hideBases.setEnabled(false);
-		fileMenu.add(hideBases);		
+		fileMenu.add(loadFiles);		
 		
 		mb.add(fileMenu);
 
@@ -118,121 +118,99 @@ public class SnugViewer extends JFrame implements ActionListener, ComponentListe
 			fileMenu.add(quitItem);
 		}
 
-		JMenu logMenu = new JMenu("Log");
-		showLogItem = new JMenuItem("Show log");
-		showLogItem.addActionListener(this);
-		logMenu.add(showLogItem);
-		mb.add(logMenu);
-
 		setJMenuBar(mb);
 
-		controlsPanel = new JPanel();
-
-		scorePanel = new JPanel();
-		scorePanel.add(new JLabel("Approve?"));
-
 		yesButton = new JButton("Yes");
-		scorePanel.registerKeyboardAction(this, "Yes", KeyStroke.getKeyStroke(KeyEvent.VK_Y, 0), JComponent.WHEN_ANCESTOR_OF_FOCUSED_COMPONENT);
 		yesButton.addActionListener(this);
-		yesButton.setEnabled(false);
-		scorePanel.add(yesButton);
+		yesButton.setEnabled(false);		
 
 		maybeButton = new JButton("Maybe");
-		scorePanel.registerKeyboardAction(this, "Maybe", KeyStroke.getKeyStroke(KeyEvent.VK_M, 0), JComponent.WHEN_ANCESTOR_OF_FOCUSED_COMPONENT);
 		maybeButton.addActionListener(this);
 		maybeButton.setEnabled(false);
-		scorePanel.add(maybeButton);
-
+		
 		noButton = new JButton("No");
-		scorePanel.registerKeyboardAction(this, "No", KeyStroke.getKeyStroke(KeyEvent.VK_N, 0), JComponent.WHEN_ANCESTOR_OF_FOCUSED_COMPONENT);
 		noButton.addActionListener(this);
 		noButton.setEnabled(false);
-		scorePanel.add(noButton);
-
-		backButton = new JButton("Back");
-		scorePanel.registerKeyboardAction(this, "Back", KeyStroke.getKeyStroke(KeyEvent.VK_B, 0), JComponent.WHEN_ANCESTOR_OF_FOCUSED_COMPONENT);
+		
+		backButton = new JButton("Back");		
 		backButton.addActionListener(this);
 		backButton.setEnabled(false);
+		
+		scorePanel = new JPanel();
+		scorePanel.add(new JLabel("Approve?"));
+		scorePanel.add(yesButton);
+		scorePanel.registerKeyboardAction(this, "Yes", KeyStroke.getKeyStroke(KeyEvent.VK_Y, 0), JComponent.WHEN_ANCESTOR_OF_FOCUSED_COMPONENT);
+		scorePanel.add(noButton);
+		scorePanel.registerKeyboardAction(this, "No", KeyStroke.getKeyStroke(KeyEvent.VK_N, 0), JComponent.WHEN_ANCESTOR_OF_FOCUSED_COMPONENT);		
+		scorePanel.add(maybeButton);
+		scorePanel.registerKeyboardAction(this, "Maybe", KeyStroke.getKeyStroke(KeyEvent.VK_M, 0), JComponent.WHEN_ANCESTOR_OF_FOCUSED_COMPONENT);		
 		scorePanel.add(backButton);
-
-		messagePanel = new JPanel();
-		message = new JLabel("");
-		message.setEnabled(false);
-		messagePanel.add(message);
-		message.setVisible(false);
-
-		JPanel rightPanel = new JPanel();
-		rightPanel.add(scorePanel);
-		rightPanel.add(messagePanel);
-		rightPanel.setLayout(new BoxLayout(rightPanel, BoxLayout.Y_AXIS));
-		controlsPanel.add(rightPanel);
-
-		controlsPanel.setMaximumSize(new Dimension(2000, (int) controlsPanel.getPreferredSize().getHeight()));
-		controlsPanel.setMinimumSize(new Dimension(10, (int) controlsPanel.getPreferredSize().getHeight()));
+		scorePanel.registerKeyboardAction(this, "Back", KeyStroke.getKeyStroke(KeyEvent.VK_B, 0), JComponent.WHEN_ANCESTOR_OF_FOCUSED_COMPONENT);
+		
+		messageText = new JTextArea(4, 40);
+		messageText.setEditable(false);
+		messagePanel = new JScrollPane(messageText);
+		
+		
+		controlsPanel = new JPanel();
+		controlsPanel.add(scorePanel);
+		controlsPanel.add(messagePanel);
+		controlsPanel.setLayout(new BoxLayout(controlsPanel, BoxLayout.X_AXIS));
+		controlsPanel.setMaximumSize(new Dimension(900, 200));
 
 		trackContainer = new JPanel();
 		trackContainer.setPreferredSize(new Dimension(900, 600));
 		trackContainer.setBackground(Color.white);
+		trackContainer.setLayout(new BoxLayout(trackContainer, BoxLayout.Y_AXIS));
 		
+		nameContainer = new JPanel();
+		nameContainer.setPreferredSize(new Dimension(60, 600));
+		nameContainer.setBackground(Color.white);
+		nameContainer.setLayout(new BoxLayout(nameContainer, BoxLayout.Y_AXIS));
+		
+		
+		JPanel mainPanel = new JPanel();
+		mainPanel.setLayout(new BoxLayout(mainPanel, BoxLayout.X_AXIS));
+		mainPanel.add(nameContainer);
+		mainPanel.add(trackContainer);
 		
 		contentPanel = new JPanel();
 		contentPanel.setLayout(new BoxLayout(contentPanel, BoxLayout.Y_AXIS));
-		contentPanel.add(trackContainer);
+		contentPanel.add(mainPanel);
 		contentPanel.add(controlsPanel);
 		contentPanel.addComponentListener(this);
+
+		controlsPanel.setVisible(false);
 		
-
-		addWindowListener(new WindowAdapter() {
-
-			public void windowClosing(WindowEvent e) {
-				System.exit(0);
-			}
-		});
-
 		this.setContentPane(contentPanel);
 		this.pack();
 		this.setVisible(true);
 
-		ld = new LoggingDialog(this);
-		ld.pack();
 	}
 
 	public void actionPerformed(ActionEvent actionEvent) {
-
-		String noCommand = new String("No");
-		String maybeCommand = new String("Maybe");
+		
 		String yesCommand = new String("Yes");
+		String noCommand = new String("No");
+		String maybeCommand = new String("Maybe");		
 		String backCommand = new String("Back");
 		String openFilesCommand = new String("Load Files");
 		String showLogCommand = new String("Show log");
 		String quitCommand = new String("Quit");
-		String hideBasesCommand = "Hide Bases";
 
 		String command = actionEvent.getActionCommand();
 		if (command.equals(noCommand)) {
 			noButton.requestFocusInWindow();
-			try {
-				recordVerdict(-1);
-			} catch (FileNotFoundException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
-			}
+			recordVerdict(-1);
+			
 		} else if (command.equals(maybeCommand)) {
 			maybeButton.requestFocusInWindow();
-			try {
-				recordVerdict(0);
-			} catch (FileNotFoundException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
-			}
+			recordVerdict(0);
+			
 		} else if (command.equals(yesCommand)) {
 			yesButton.requestFocusInWindow();
-			try {
-				recordVerdict(1);
-			} catch (FileNotFoundException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
-			}
+			recordVerdict(1);
+			
 		} else if (command.equals(backCommand)) {
 			setBackSNP(true);
 			displayVariantIndex--;
@@ -249,112 +227,164 @@ public class SnugViewer extends JFrame implements ActionListener, ComponentListe
 			}
 			drawReads();
 		} else if (command.equals(openFilesCommand)) {
-
-			bams = new ArrayList<SAMFileReader>();
 			
 			dcd.pack();
 			dcd.setVisible(true);
 
 			// check all the dialog fields are valid paths to data
+			String bam = dcd.getBam().trim();
+			ArrayList<String> messages = new ArrayList<String>();
 			
-			String bam = dcd.getBam();
+			if (bam.equals("")) {
+				messages.add("ERROR: BAM(s) file field empty");
+			}
 			
-			// if the bam path ends .bam just open the single file			
-			if (bam.endsWith(".bam")) {
-				System.out.println(bam);
-				File bamFile = new File(bam);
-				if (bamFile.exists() && checkBamIndex(bam)) {
-					bams.add(new SAMFileReader(bamFile));
-					bamReader = new SAMFileReader(bamFile);
+			String var = dcd.getVar();
+			if (var.equals("")) {
+				messages.add("ERROR: Variant file field empty");
+			}
+			
+			String ref = dcd.getRef();
+			if (ref.equals("")) {
+				messages.add("ERROR: Reference file field empty");
+			}
+			
+			if (messages.size() > 0) {
+				// we have found an error so print it and return
+				printMessage(messages);
+				return;
+			} else {				
+				// if we fail to open any bams then go no further
+				if (!openBams(bam)) {
+					return;
 				}
-			
-			// if the bam path ends .bams the file is assumed to contain a list of bam files				
-			} else if (bam.endsWith(".bams")) {
-				
-				File bamFiles = new File(bam);
-				String absolutePath = bamFiles.getAbsolutePath();
-				String bamDir = absolutePath.substring(0,absolutePath.lastIndexOf(File.separator));
-				
-				// open the bams file and loop through all the bam files
-				BufferedReader listReader = null;
-				try {
-					listReader = new BufferedReader(new FileReader(bam));
-				} catch (FileNotFoundException e) {
-					// TODO Auto-generated catch block
-					e.printStackTrace();
+				// if we fail to load any variants then go no further
+				if (!openVariants(var)) {
+					return;
 				}
-				
-				String currentline;
-				
-				try {
-					while ((currentline = listReader.readLine()) != null) {
-						//check that the line is not blank
-						if (currentline == null || currentline.trim().equals("")){
-							continue;
-						} else {
-							String b = bamDir +File.separator + currentline.trim();
-							File bamFile = new File(b);
-							if (bamFile.exists() && checkBamIndex(b)) {
-								bams.add(new SAMFileReader(bamFile));
-							}
-						}
-					}
-				} catch (IOException e) {
-					// TODO Auto-generated catch block
-					e.printStackTrace();
+				// if we fail to load a reference then go no further
+				if (!openReference(ref)) {
+					return;
 				}
 			}
-
+			
+			// if opening all the required files is successful then load the first variant
 			currentVariantIndex = 0;
 			displayVariantIndex = currentVariantIndex;
-			
-			// load variants file
-			String var = dcd.getVar();
-			VariantListFile variantListFile = new VariantListFile(var);
-			variantList = variantListFile.getVariants();
-			ld.log(variantList.size() + " variants loaded");
-			output = checkOverwriteFile(new File(var + ".scores"));
-			
-			
-			// load the reference file			
-			try {
-				referenceFile = new IndexedFastaSequenceFile(new File(dcd.getRef()));
-				ld.log("Reference file loaded");
-			} catch (FileNotFoundException e) {
-				ld.log("Reference file not found");
-			}
-			
-			yesButton.setEnabled(true);
-			noButton.setEnabled(true);
-			maybeButton.setEnabled(true);
-			yesButton.requestFocusInWindow();
+			activeScorePanel(true);
 			drawReads();
-//			this.pack();
-			
 				
 		} else if (command.equals(quitCommand)) {
 			System.exit(0);
-		} else if (command.equals(showLogCommand)) {
-			ld.setVisible(true);
-		} else if (command.equals(hideBasesCommand)) {
-            // turn filtering on/off
-            if (hideBases.isSelected()) {
-                hideBases();
-            } else {
-                showBases();
-            }
+		}
+	}
+
+	private boolean openReference(String ref) {
+		try {
+			File refFile = new File(ref);
+			referenceFile = new IndexedFastaSequenceFile(refFile);
+			refName = refFile.getName();
+			printMessage("Loaded reference file: '"+ ref +"'");
+		} catch (FileNotFoundException e) {
+			JOptionPane.showMessageDialog(null, "Unable to open the selected reference file:\n" + e.toString(), "Error", JOptionPane.ERROR_MESSAGE);
+			return false;
+		}		
+		return true;
+	}
+
+	private boolean openVariants(String var) {		
+		VariantListFile variantListFile = null;
+		try {
+			variantListFile = new VariantListFile(var);
+		} catch (IOException e) {
+			JOptionPane.showMessageDialog(null, "Unable to open the selected variants file:\n" + e.toString(), "Error", JOptionPane.ERROR_MESSAGE);
+			return false;
+		}
+		variantList = variantListFile.getVariants();
+		printMessage(variantList.size() + " variants loaded from: '"+ var +"'");
+		output = checkOverwriteFile(new File(var + ".scores"));
+		
+		if (output == null) {			
+			JOptionPane.showMessageDialog(null, "Unable to open the selected output file:\n", "Error", JOptionPane.ERROR_MESSAGE);
+			return false;
 		}
 		
+		printMessage("Writing scores to: '"+ output.getAbsolutePath() +"'");
+		return true;
 	}
 
-	private void showBases() {
-		// TODO Auto-generated method stub
+	private boolean openBams(String bam) {
+		bams = new ArrayList<SAMFileReader>();
+		bamNames = new ArrayList<String>();
+		// if the bam path ends .bam just open the single file			
+		if (bam.endsWith(".bam")) {
+			File bamFile = new File(bam);			
+			if (bamFile.exists()) {
+				if (checkBamIndex(bam)) {
+					bams.add(new SAMFileReader(bamFile));
+					bamNames.add(bamFile.getName());
+					printMessage("Loaded BAM: '"+ bam +"'");
+				}
+			} else {
+				printMessage("Can't load BAM: '"+ bam +"'");
+				return false;
+			}
 		
-	}
-
-	private void hideBases() {
-		// TODO Auto-generated method stub
-		
+		// if the bam path ends .bams the file is assumed to contain a list of bam files				
+		} else if (bam.endsWith(".bams")) {
+			
+			File bamFiles = new File(bam);
+			String absolutePath = bamFiles.getAbsolutePath();
+			String bamDir = absolutePath.substring(0,absolutePath.lastIndexOf(File.separator));
+			
+			// open the bams file and loop through all the bam files
+			BufferedReader listReader = null;
+			try {
+				listReader = new BufferedReader(new FileReader(bam));
+			} catch (FileNotFoundException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+			
+			String currentline;
+			
+			try {
+				while ((currentline = listReader.readLine()) != null) {
+					//check that the line is not blank
+					if (currentline == null || currentline.trim().equals("")){
+						continue;
+					} else {
+						
+						// check if the line contains 1 or 2 columns
+						currentline = currentline.trim();
+						String[] values = currentline.split("\\t+");
+						String bamName = null;
+						String bamDisplayName = null;
+						
+						if (values.length == 1) {
+							bamName = values[0];
+							bamDisplayName = values[0];
+						} else if (values.length > 1) {
+							// not expecting any more than 2 columns so ignore addition columns
+							bamName = values[0];
+							bamDisplayName = values[1];
+						}
+						
+						String b = bamDir + File.separator + bamName;
+						File bamFile = new File(b);
+						if (bamFile.exists() && checkBamIndex(b)) {
+							bams.add(new SAMFileReader(bamFile));
+							bamNames.add(bamDisplayName);
+							printMessage("Loaded BAM: '"+ b +"'");
+						}
+					}
+				}
+			} catch (IOException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+		}
+		return true;
 	}
 
 	private Boolean checkBamIndex(String bam) {
@@ -371,73 +401,90 @@ public class SnugViewer extends JFrame implements ActionListener, ComponentListe
 					+ "samtools sort <in.bam> <out.prefix>"
 					+ ls
 					+ "samtools index <sorted.bam>";
-			ld.log(msg);
+			
+			JOptionPane.showMessageDialog(null, msg, "Error", JOptionPane.ERROR_MESSAGE);
+			
 			return Boolean.FALSE;
 		} else {
-			ld.log("BAM loaded: " + bam);
 			return Boolean.TRUE;	
 		}
 		
 	}
 
 	private void drawReads() {
-		Variant v = variantList.get(displayVariantIndex);
-		this.setTitle(v.getName());
 		
 		trackContainer.removeAll();
-
-		// calculate the height of each panel		
-		int refPanelHeight = 60;
-		int border = 40;
-		int height = this.getHeight() - (controlsPanel.getHeight() + mb.getHeight()) - refPanelHeight - border;
-		int trackHeight = height / bams.size();
-		int width = this.getWidth() - border;
-		int visableBases = width / pixPerBase;
+		nameContainer.removeAll();
 		
-		// assume the middle base is the variant - how many bases are either side of it
-		int basesOneSide = (visableBases -1) / 2;
-		
-		// distance in pix to the variant site
-		int offset = basesOneSide * pixPerBase;
+		if (bams.size() > 0) {
+			Variant v = variantList.get(displayVariantIndex);
+			
+			this.setTitle(v.getName());
+			
+			trackContainer.removeAll();
+			nameContainer.removeAll();
+			
+			// calculate the height of each panel		
+			int refPanelHeight = 50;
+			int border = 40;
+			int height = trackContainer.getHeight() - (controlsPanel.getHeight() + mb.getHeight()) - refPanelHeight - border;
+			int trackHeight = height / bams.size();
+			int width = trackContainer.getWidth();
+			int visableBases = width / pixPerBase;
+			
+			// assume the middle base is the variant - how many bases are either side of it
+			int basesOneSide = (visableBases -1) / 2;
+			
+			// distance in pix to the variant site
+			int offset = basesOneSide * pixPerBase;
+					
+			for (SAMFileReader sfr : bams) {
 				
-		for (SAMFileReader sfr : bams) {
+				ArrayList<SAMRecord> reads = new ArrayList<SAMRecord>();		
+				SAMRecordIterator readsItr = sfr.queryOverlapping(v.getChr(), v.getPos(), v.getPos());
+				
+				while (readsItr.hasNext()) {	
+		        	reads.add(readsItr.next());  	
+		        }
+		        readsItr.close();
+		        
+		        AlignmentPanel ap = new AlignmentPanel(pixPerBase, offset, reads, v, height, referenceFile);
+		        
+		        ap.setPreferredSize(new Dimension(width, trackHeight));
+				setBackground(Color.white);
+				ap.setBorder(BorderFactory.createLineBorder(Color.black));	        
+				
+				trackContainer.add(ap);
+			}
 			
-			ArrayList<SAMRecord> reads = new ArrayList<SAMRecord>();		
-			SAMRecordIterator readsItr = sfr.queryOverlapping(v.getChr(), v.getPos(), v.getPos());
-			
-			while (readsItr.hasNext()) {	
-	        	reads.add(readsItr.next());  	
-	        }
-	        readsItr.close();
-	        
-	        AlignmentPanel ap = new AlignmentPanel(pixPerBase, offset, reads, v, height, referenceFile);
-	        
-	        ap.setPreferredSize(new Dimension(width, trackHeight));
-			setBackground(Color.white);
-			ap.setBorder(BorderFactory.createLineBorder(Color.black));	        
-			trackContainer.add(ap);
+			// draw the reference panel
+			int refStart = v.getPos() - basesOneSide;
+			// add the variant base to the bases either side
+			int refEnd = v.getPos() + basesOneSide + 1;
 
+			ReferencePanel rp = new ReferencePanel(pixPerBase, v, referenceFile, refStart, refEnd);
+			rp.setPreferredSize(new Dimension(width, refPanelHeight));
+			trackContainer.add(rp);
+						
+			// add bam names
+			for (String bamName : bamNames) {				
+				
+				JPanel nameHolder = new JPanel();
+				nameHolder.add(new JLabel(bamName));
+				nameHolder.setPreferredSize(new Dimension(100, trackHeight));
+				nameHolder.setBorder(BorderFactory.createLineBorder(Color.black));
+				nameContainer.add(nameHolder);
+			}
+			
+			JPanel refNameHolder = new JPanel();
+			refNameHolder.add(new JLabel(refName));
+			refNameHolder.setPreferredSize(new Dimension(100, refPanelHeight));						
+			nameContainer.add(refNameHolder);
+			
+			this.setVisible(true);
+			this.repaint();
 		}
 		
-		// draw the reference panel
-		int refStart = v.getPos() - basesOneSide;
-		int refEnd = v.getPos() + basesOneSide;
-
-		ReferencePanel rp = new ReferencePanel(pixPerBase, v, referenceFile, refStart, refEnd);
-		rp.setPreferredSize(new Dimension(width, refPanelHeight));
-		trackContainer.add(rp);
-		
-		this.setVisible(true);
-		
-	}
-
-	private void disableAllActions() {
-		// disable all actions while loading data
-		yesButton.setEnabled(false);
-		noButton.setEnabled(false);
-		maybeButton.setEnabled(false);
-		backButton.setEnabled(false);
-		scorePanel.setEnabled(false);
 	}
 
 	private void printScores() throws FileNotFoundException {
@@ -455,6 +502,7 @@ public class SnugViewer extends JFrame implements ActionListener, ComponentListe
 
 	private void activeScorePanel(boolean score) {
 		if (score) {
+			controlsPanel.setVisible(true);
 			yesButton.setEnabled(true);
 			noButton.setEnabled(true);
 			maybeButton.setEnabled(true);
@@ -484,19 +532,14 @@ public class SnugViewer extends JFrame implements ActionListener, ComponentListe
 	private File checkOverwriteFile(File file) {
 
 		if (file.exists()) {
-			int n = JOptionPane
-					.showConfirmDialog(
-							this.getContentPane(),
-							"The file "
-									+ file.getName()
-									+ " already exists\n would you like to overwrite this file?",
-							"Overwrite file?", JOptionPane.YES_NO_OPTION,
-							JOptionPane.QUESTION_MESSAGE);
+			int n = JOptionPane.showConfirmDialog(	this.getContentPane(), "The file "	+ file.getName() + " already exists\n would you like to overwrite this file?", "Overwrite file?", JOptionPane.YES_NO_OPTION, JOptionPane.QUESTION_MESSAGE);
 			// n 0 = yes 1 = no
-			if (n == 1) {
+			if (n == 1) {	
+				JFileChooser jfc = new JFileChooser("user.dir");
 				if (jfc.showSaveDialog(this) == JFileChooser.APPROVE_OPTION) {
 					file = new File(jfc.getSelectedFile().getAbsolutePath());
 				} else {
+					// we have no output file so don't load the data
 					file = null;
 				}
 			}
@@ -504,10 +547,15 @@ public class SnugViewer extends JFrame implements ActionListener, ComponentListe
 		return file;
 	}
 
-	private void recordVerdict(int v) throws FileNotFoundException {
+	private void recordVerdict(int v) {
 		if (isBackSNP()) {
 			listScores.put(variantList.get(displayVariantIndex), v);
-			printScores();
+			try {
+				printScores();
+			} catch (FileNotFoundException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
 			setBackSNP(false);
 			if (displayVariantIndex == 0) {
 				backButton.setEnabled(true);
@@ -516,7 +564,12 @@ public class SnugViewer extends JFrame implements ActionListener, ComponentListe
 			drawReads();
 		} else {
 			listScores.put(variantList.get(currentVariantIndex), v);
-			printScores();
+			try {
+				printScores();
+			} catch (FileNotFoundException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
 			if (currentVariantIndex < (variantList.size() - 1)) {
 				currentVariantIndex++;
 				displayVariantIndex = currentVariantIndex;
@@ -540,9 +593,24 @@ public class SnugViewer extends JFrame implements ActionListener, ComponentListe
 		}
 	}
 
-	private void printMessage(String string) {
-		message.setText(string);
-		message.setVisible(true);
+	private void printMessage(String message) {
+		
+		SimpleDateFormat sdf = new SimpleDateFormat("h:mm a");
+		String formattedDate = sdf.format(new Date());
+		
+		messageText.append(formattedDate + ": " + message + "\n");		
+	}
+	
+	private void printMessage(ArrayList<String> messages) {
+		
+		SimpleDateFormat sdf = new SimpleDateFormat("h:mm a");
+		String formattedDate = sdf.format(new Date());
+		
+		for (String message : messages) {
+			messageText.append(formattedDate + ": " + message + "\n");
+		}
+		controlsPanel.repaint();
+		controlsPanel.validate();
 	}
 
 	public void refreshPlot() {
@@ -552,27 +620,28 @@ public class SnugViewer extends JFrame implements ActionListener, ComponentListe
 	}
 
 	@Override
-	public void componentHidden(ComponentEvent arg0) {
+	public void componentHidden(ComponentEvent e) {
 		// TODO Auto-generated method stub
 		
 	}
 
 	@Override
-	public void componentMoved(ComponentEvent arg0) {
+	public void componentMoved(ComponentEvent e) {
 		// TODO Auto-generated method stub
 		
 	}
 
 	@Override
-	public void componentResized(ComponentEvent arg0) {
+	public void componentResized(ComponentEvent e) {
 		if (displayVariantIndex != null) {
 			drawReads();
-		}
+		}		
 	}
 
 	@Override
-	public void componentShown(ComponentEvent arg0) {
+	public void componentShown(ComponentEvent e) {
 		// TODO Auto-generated method stub
 		
 	}
+
 }
