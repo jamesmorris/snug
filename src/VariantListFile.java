@@ -1,64 +1,52 @@
 import java.io.BufferedReader;
-import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.LinkedList;
+
 
 
 public class VariantListFile {
 
 	ArrayList<Variant> variants = new ArrayList<Variant>();
 	
-	public VariantListFile(String filename) {
-		BufferedReader listReader = null;
-		try {
-			listReader = new BufferedReader(new FileReader(filename));
-		} catch (FileNotFoundException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
+	public VariantListFile(String filename) throws IOException {
+		
+		BufferedReader listReader = new BufferedReader(new FileReader(filename));
 		
 		String currentline;
 		
-		try {
-			while ((currentline = listReader.readLine()) != null) {
+		while ((currentline = listReader.readLine()) != null) {
 				
-				//check that the line is not blank
-				if (currentline == null || currentline.trim().equals("")){
-					continue;
+			//check that the line is not blank
+			if (currentline == null || currentline.trim().equals("")){
+				continue;
+			} else {
+				String[] bits;					
+				if (currentline.split(":").length == 2) {
+					bits = currentline.split(":");
+				} else if (currentline.split("\t").length == 2) {
+					bits = currentline.split("\t");
+				} else if (currentline.split(" +").length == 2) {
+					bits = currentline.split(" +");
+				} else if  (currentline.split(",").length == 2) {
+					bits = currentline.split(",");
+				} else if (currentline.split("-").length == 2) {
+					bits = currentline.split("-");
 				} else {
-					String[] bits;					
-					if (currentline.split(":").length == 2) {
-						bits = currentline.split(":");
-					} else if (currentline.split("\t").length == 2) {
-						bits = currentline.split("\t");
-					} else if (currentline.split(" +").length == 2) {
-						bits = currentline.split(" +");
-					} else if  (currentline.split(",").length == 2) {
-						bits = currentline.split(",");
-					} else if (currentline.split("-").length == 2) {
-						bits = currentline.split("-");
-					} else {
-						bits = null;
-					}					
-					if (bits != null) {						
-						int[] variant = new int[2];
-						String chr = bits[0];
-						int pos = PosStr2Int(bits[1]);
-						variants.add(new Variant(chr, pos));	
-					} else {
-						variants = null;
-						System.out.println("Can't parse variant chromosome and position '" + currentline + "'");
-					}					
-				}
-						
+					bits = null;
+				}					
+				if (bits != null) {						
+					String chr = bits[0];
+					int pos = PosStr2Int(bits[1]);
+					variants.add(new Variant(chr, pos));	
+				} else {
+					variants = null;
+					System.out.println("Can't parse variant chromosome and position '" + currentline + "'");
+				}					
 			}
-		} catch (IOException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
+						
 		}
-		
+		listReader.close();
 	}
 
 	public ArrayList<Variant> getVariants() {
