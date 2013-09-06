@@ -9,7 +9,7 @@ public class VariantListFile {
 
 	ArrayList<Variant> variants = new ArrayList<Variant>();
 	
-	public VariantListFile(String filename) throws IOException {
+	public VariantListFile(String filename) throws IOException, UnrecognisedVariantFileFormat {
 		
 		BufferedReader listReader = new BufferedReader(new FileReader(filename));
 		
@@ -41,7 +41,8 @@ public class VariantListFile {
 					variants.add(new Variant(chr, pos));	
 				} else {
 					variants = null;
-					System.out.println("Can't parse variant chromosome and position '" + currentline + "'");
+					throw new  UnrecognisedVariantFileFormat("Can't parse variant chromosome and position '" + currentline + "'");
+					
 				}					
 			}
 						
@@ -57,14 +58,8 @@ public class VariantListFile {
 		this.variants = v;
 	}
 	
-    private int PosStr2Int(String string) {
-        int pos = 0;
-        try {
-            pos = Integer.parseInt(string);
-        } catch (NumberFormatException nfe) {
-            System.out.println("position is not a number '" + string + "'");
-        }
-        return pos;
+    private int PosStr2Int(String string) {        
+        return Integer.parseInt(string);
     }
 	
 }
