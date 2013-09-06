@@ -32,11 +32,11 @@ public class AlignmentPanel extends JPanel {
 	int trackHeight;
 	IndexedFastaSequenceFile reference;
 	// interface options
-	private boolean hideBases;
+	private boolean collapse;
 	
 	ArrayList<BasePosition> baseCounts;
 	
-	public AlignmentPanel(int pixPerBase, int offset, ArrayList<SAMRecord> reads, Variant v, int height, IndexedFastaSequenceFile ref) {
+	public AlignmentPanel(int pixPerBase, int offset, ArrayList<SAMRecord> reads, Variant v, int height, IndexedFastaSequenceFile ref, boolean collapse) {
 		super();
 		this.pixPerBase = pixPerBase;
 		this.offset = offset;
@@ -44,6 +44,7 @@ public class AlignmentPanel extends JPanel {
 		this.variant = v;
 		this.trackHeight = height;
 		this.reference = ref;
+		this.collapse = collapse;
 		
 		ToolTipManager.sharedInstance().registerComponent(this);
 		ToolTipManager.sharedInstance().setDismissDelay(10000);
@@ -59,7 +60,11 @@ public class AlignmentPanel extends JPanel {
 	public void paintComponent(Graphics g) {
 		super.paintComponent(g);
 		Graphics2D g2 = (Graphics2D) g;
-		drawAlignment(g2);
+		if (collapse) {
+			drawCollapsedAlignment(g2);
+		} else {
+			drawAlignment(g2);			
+		}
 	}
 	
 	private void drawAlignment(Graphics2D g2) {
@@ -79,6 +84,75 @@ public class AlignmentPanel extends JPanel {
     	}
     }
 	
+	private void drawCollapsedAlignment(Graphics2D g2) {
+    	if (reads != null) {    		
+    		int ypos = 5;
+    		
+    		baseCounts = new ArrayList<BasePosition>();
+    		
+    		g2.setColor(Color.black);
+            for (SAMRecord read : reads) {            	
+            	drawCollapsedSequence(g2, read, ypos, offset);
+            	ypos += 5;
+    		}
+    		// draw lines before and after to show the position of the variant
+            g2.drawLine(offset-2, 0, offset-2, trackHeight);
+    		g2.drawLine(offset + (pixPerBase-2), 0, offset + (pixPerBase-2), trackHeight);
+    	}
+    }
+	
+	private void drawCollapsedSequence(Graphics2D g2, SAMRecord samRecord, int ypos, int offset2) {
+		
+		int xpos = 0;
+		int basePosition;
+		final String readSeq = samRecord.getReadString();
+		
+		// set the line width
+		g2.setStroke(new BasicStroke(2));
+		
+		List<AlignmentBlock> blocks = samRecord.getAlignmentBlocks();
+		
+		for(int i=0; i<blocks.size(); i++) {
+			
+			AlignmentBlock block = blocks.get(i);
+			int blockStart = block.getReadStart();
+			int distance2Variant = block.getReferenceStart() - variant.getPos();			
+			for(int j=0; j<block.getLength(); j++) {
+			
+				int readPos = blockStart-1+j;				
+				int currentPosition = ((distance2Variant + j) + variant.getPos());				
+				ReferenceSequence refSeq = reference.getSubsequenceAt(variant.getChr(), currentPosition, currentPosition);
+				byte[] bases = refSeq.getBases();				
+				String refBase = String.valueOf((char) bases[0]);
+				String readBase = readSeq.substring(readPos, readPos+1);
+				basePosition = (distance2Variant + j) * pixPerBase;				
+				xpos = offset + basePosition;
+				
+				// check read base against reference base - colour if different
+				if (readBase.matches(refBase)) {
+					g2.setColor(Color.gray);					
+				} else {
+					baseColour(g2, readBase);
+				}				
+				
+				// update the base counts for the current position
+				int position = xpos / pixPerBase;
+				
+				// first test if the base is in view
+				if (xpos >= 0) {
+					try {
+						baseCounts.get(position).addBase(readBase);		
+					} catch (IndexOutOfBoundsException e) {
+						baseCounts.add(position, new BasePosition());
+						baseCounts.get(position).addBase(readBase);
+					}
+					g2.drawLine(xpos, ypos, xpos + pixPerBase, ypos);
+				}
+			}			
+		}
+		
+	}
+
 	private void drawSequence(final Graphics2D g2, final SAMRecord samRecord, int ypos, int offset) {
 		
 		int xpos = 0;
@@ -143,7 +217,6 @@ public class AlignmentPanel extends JPanel {
 						baseCounts.add(position, new BasePosition());
 						baseCounts.get(position).addBase(readBase);
 					}
-					
 					g2.drawString(readBase, xpos, ypos);	
 				}
 			}			
@@ -188,10 +261,6 @@ public class AlignmentPanel extends JPanel {
 
 	public void setReference(IndexedFastaSequenceFile indexedFastaSequenceFile) {
 		this.reference = indexedFastaSequenceFile;
-	}
-
-	public void setHideBases(boolean b) {
-		this.hideBases = b;		
 	}
 
     @Override
