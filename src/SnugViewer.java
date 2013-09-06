@@ -2,6 +2,7 @@ import javax.swing.BorderFactory;
 import javax.swing.Box;
 import javax.swing.BoxLayout;
 import javax.swing.JButton;
+import javax.swing.JCheckBoxMenuItem;
 import javax.swing.JComponent;
 import javax.swing.JFileChooser;
 import javax.swing.JFrame;
@@ -12,6 +13,7 @@ import javax.swing.JMenuItem;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
+import javax.swing.JSplitPane;
 import javax.swing.JTextArea;
 import javax.swing.KeyStroke;
 
@@ -69,7 +71,9 @@ public class SnugViewer extends JFrame implements ActionListener, ComponentListe
 	private JButton noButton;
 	private JButton backButton;
 	private JMenu fileMenu;
+	private JMenu viewMenu;
 	private JMenuItem loadFiles;
+	private JCheckBoxMenuItem collapseViewCB;
 	DataConnectionDialog dcd;
 	
 	JMenuBar mb;
@@ -88,7 +92,9 @@ public class SnugViewer extends JFrame implements ActionListener, ComponentListe
 	
 	// set the space given to each base as it is drawn
 	int pixPerBase = 15;
-
+	// set the default view to be expanded
+	boolean collapseView = false;
+	
 	public static void main(String[] args) {
 		new SnugViewer();
 	}
@@ -96,8 +102,6 @@ public class SnugViewer extends JFrame implements ActionListener, ComponentListe
 	SnugViewer() {
 		super("Snug...");
 
-//		addMouseMotionListener(this);
-		
 		dcd = new DataConnectionDialog(this);
 		mb = new JMenuBar();
 
@@ -110,6 +114,15 @@ public class SnugViewer extends JFrame implements ActionListener, ComponentListe
 		fileMenu.add(loadFiles);		
 		
 		mb.add(fileMenu);
+		
+		viewMenu = new JMenu("View");
+        collapseViewCB = new JCheckBoxMenuItem("Collapse view");
+        collapseViewCB.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_C, menumask));
+        collapseViewCB.addActionListener(this);
+        collapseViewCB.setEnabled(false);
+        viewMenu.add(collapseViewCB);
+		
+        mb.add(viewMenu);
 
 		if (!(System.getProperty("os.name").toLowerCase().contains("mac"))) {
 			JMenuItem quitItem = new JMenuItem("Quit");
@@ -151,36 +164,36 @@ public class SnugViewer extends JFrame implements ActionListener, ComponentListe
 		messageText.setEditable(false);
 		messagePanel = new JScrollPane(messageText);
 		
-		
 		controlsPanel = new JPanel();
 		controlsPanel.add(scorePanel);
 		controlsPanel.add(messagePanel);
 		controlsPanel.setLayout(new BoxLayout(controlsPanel, BoxLayout.X_AXIS));
 		controlsPanel.setMaximumSize(new Dimension(900, 200));
-
+		controlsPanel.setVisible(false);
+		controlsPanel.setAlignmentX(Component.LEFT_ALIGNMENT);
+		
 		trackContainer = new JPanel();
-		trackContainer.setPreferredSize(new Dimension(900, 600));
 		trackContainer.setBackground(Color.white);
 		trackContainer.setLayout(new BoxLayout(trackContainer, BoxLayout.Y_AXIS));
+		trackContainer.setBorder(BorderFactory.createEmptyBorder(0,0,0,10));
 		
 		nameContainer = new JPanel();
-		nameContainer.setPreferredSize(new Dimension(60, 600));
+		
 		nameContainer.setBackground(Color.white);
 		nameContainer.setLayout(new BoxLayout(nameContainer, BoxLayout.Y_AXIS));
+		nameContainer.setBorder(BorderFactory.createEmptyBorder(0,10,0,0));
 		
-		
-		JPanel mainPanel = new JPanel();
-		mainPanel.setLayout(new BoxLayout(mainPanel, BoxLayout.X_AXIS));
-		mainPanel.add(nameContainer);
-		mainPanel.add(trackContainer);
-		
-		contentPanel = new JPanel();
+		JSplitPane mainPanel = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, nameContainer, trackContainer);
+		mainPanel.setOneTouchExpandable(true);
+		mainPanel.setDividerLocation(100);
+		mainPanel.setAlignmentX(Component.LEFT_ALIGNMENT);
+
+        contentPanel = new JPanel();
+        contentPanel.setPreferredSize(new Dimension(900, 600));
 		contentPanel.setLayout(new BoxLayout(contentPanel, BoxLayout.Y_AXIS));
 		contentPanel.add(mainPanel);
 		contentPanel.add(controlsPanel);
 		contentPanel.addComponentListener(this);
-
-		controlsPanel.setVisible(false);
 		
 		this.setContentPane(contentPanel);
 		this.pack();
@@ -190,13 +203,13 @@ public class SnugViewer extends JFrame implements ActionListener, ComponentListe
 
 	public void actionPerformed(ActionEvent actionEvent) {
 		
-		String yesCommand = new String("Yes");
-		String noCommand = new String("No");
-		String maybeCommand = new String("Maybe");		
-		String backCommand = new String("Back");
-		String openFilesCommand = new String("Load Files");
-		String showLogCommand = new String("Show log");
-		String quitCommand = new String("Quit");
+		String yesCommand          = "Yes";
+		String noCommand           = "No";
+		String maybeCommand        = "Maybe";		
+		String backCommand         = "Back";
+		String openFilesCommand    = "Load Files";
+		String quitCommand         = "Quit";
+		String collapseViewCommand = "Collapse view";
 
 		String command = actionEvent.getActionCommand();
 		if (command.equals(noCommand)) {
@@ -226,6 +239,16 @@ public class SnugViewer extends JFrame implements ActionListener, ComponentListe
 				noButton.requestFocusInWindow();
 			}
 			drawReads();
+		} else if (command.equals(collapseViewCommand)) {
+			// turn filtering on/off
+            if (collapseViewCB.isSelected()) {
+                collapseView = true;
+            } else {
+                collapseView = false;
+            }
+            if (displayVariantIndex != null) {
+                drawReads();
+            }			
 		} else if (command.equals(openFilesCommand)) {
 			
 			dcd.pack();
@@ -299,7 +322,14 @@ public class SnugViewer extends JFrame implements ActionListener, ComponentListe
 		} catch (IOException e) {
 			JOptionPane.showMessageDialog(null, "Unable to open the selected variants file:\n" + e.toString(), "Error", JOptionPane.ERROR_MESSAGE);
 			return false;
+		} catch (NumberFormatException e) {
+			JOptionPane.showMessageDialog(null, "Position value in variants file is not a number", "Error", JOptionPane.ERROR_MESSAGE);
+			return false;
+		} catch (UnrecognisedVariantFileFormat e) {
+			JOptionPane.showMessageDialog(null, "Unrecognised variant file format: " + e.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
+			return false;
 		}
+		
 		variantList = variantListFile.getVariants();
 		printMessage(variantList.size() + " variants loaded from: '"+ var +"'");
 		output = checkOverwriteFile(new File(var + ".scores"));
@@ -324,6 +354,8 @@ public class SnugViewer extends JFrame implements ActionListener, ComponentListe
 					bams.add(new SAMFileReader(bamFile));
 					bamNames.add(bamFile.getName());
 					printMessage("Loaded BAM: '"+ bam +"'");
+				} else {
+					return false;
 				}
 			} else {
 				printMessage("Can't load BAM: '"+ bam +"'");
@@ -383,6 +415,9 @@ public class SnugViewer extends JFrame implements ActionListener, ComponentListe
 				// TODO Auto-generated catch block
 				e.printStackTrace();
 			}
+		} else {
+			JOptionPane.showMessageDialog(null, "Bam file should end .bam or .bams:\n", "Error", JOptionPane.ERROR_MESSAGE);
+			return false;
 		}
 		return true;
 	}
@@ -432,6 +467,12 @@ public class SnugViewer extends JFrame implements ActionListener, ComponentListe
 			int width = trackContainer.getWidth();
 			int visableBases = width / pixPerBase;
 			
+			// if the track height is too low then add another column of alignments
+			
+			// dont draw alignments if the height and width gets too low - warn the user of too many bams
+			
+			// minimum height and width values change depending if you are using collapsed or expanded view
+			
 			// assume the middle base is the variant - how many bases are either side of it
 			int basesOneSide = (visableBases -1) / 2;
 			
@@ -448,7 +489,7 @@ public class SnugViewer extends JFrame implements ActionListener, ComponentListe
 		        }
 		        readsItr.close();
 		        
-		        AlignmentPanel ap = new AlignmentPanel(pixPerBase, offset, reads, v, height, referenceFile);
+		        AlignmentPanel ap = new AlignmentPanel(pixPerBase, offset, reads, v, height, referenceFile, collapseView);
 		        
 		        ap.setPreferredSize(new Dimension(width, trackHeight));
 				setBackground(Color.white);
@@ -507,6 +548,7 @@ public class SnugViewer extends JFrame implements ActionListener, ComponentListe
 			noButton.setEnabled(true);
 			maybeButton.setEnabled(true);
 			scorePanel.setEnabled(true);
+			collapseViewCB.setEnabled(true);
 			if (currentVariantIndex == 0 || displayVariantIndex == 0) {
 				backButton.setEnabled(false);
 			} else {
@@ -518,6 +560,7 @@ public class SnugViewer extends JFrame implements ActionListener, ComponentListe
 			maybeButton.setEnabled(false);
 			backButton.setEnabled(false);
 			scorePanel.setEnabled(false);
+			collapseViewCB.setEnabled(false);
 		}
 	}
 
