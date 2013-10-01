@@ -48,8 +48,7 @@ import net.sf.samtools.SAMRecordIterator;
 import net.sf.picard.reference.IndexedFastaSequenceFile;
 import com.jcraft.jsch.*;
 
-public class SnugViewer extends JFrame implements ActionListener,
-		ComponentListener {
+public class SnugViewer extends JFrame implements ActionListener, ComponentListener {
 
 	/**
 	 * 
@@ -117,8 +116,7 @@ public class SnugViewer extends JFrame implements ActionListener,
 
 		fileMenu = new JMenu("File");
 		JMenuItem loadFiles = new JMenuItem("Load Files");
-		loadFiles.setAccelerator(KeyStroke
-				.getKeyStroke(KeyEvent.VK_B, menumask));
+		loadFiles.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_B, menumask));
 		loadFiles.addActionListener(this);
 		fileMenu.add(loadFiles);
 
@@ -126,8 +124,7 @@ public class SnugViewer extends JFrame implements ActionListener,
 
 		viewMenu = new JMenu("View");
 		collapseViewCB = new JCheckBoxMenuItem("Collapse view");
-		collapseViewCB.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_C,
-				menumask));
+		collapseViewCB.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_C, menumask));
 		collapseViewCB.addActionListener(this);
 		collapseViewCB.setEnabled(false);
 		viewMenu.add(collapseViewCB);
@@ -136,8 +133,7 @@ public class SnugViewer extends JFrame implements ActionListener,
 
 		if (!(System.getProperty("os.name").toLowerCase().contains("mac"))) {
 			JMenuItem quitItem = new JMenuItem("Quit");
-			quitItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_Q,
-					menumask));
+			quitItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_Q, menumask));
 			quitItem.addActionListener(this);
 			fileMenu.add(quitItem);
 		}
@@ -163,21 +159,13 @@ public class SnugViewer extends JFrame implements ActionListener,
 		scorePanel = new JPanel();
 		scorePanel.add(new JLabel("Approve?"));
 		scorePanel.add(yesButton);
-		scorePanel.registerKeyboardAction(this, "Yes",
-				KeyStroke.getKeyStroke(KeyEvent.VK_Y, 0),
-				JComponent.WHEN_ANCESTOR_OF_FOCUSED_COMPONENT);
+		scorePanel.registerKeyboardAction(this, "Yes", KeyStroke.getKeyStroke(KeyEvent.VK_Y, 0), JComponent.WHEN_ANCESTOR_OF_FOCUSED_COMPONENT);
 		scorePanel.add(noButton);
-		scorePanel.registerKeyboardAction(this, "No",
-				KeyStroke.getKeyStroke(KeyEvent.VK_N, 0),
-				JComponent.WHEN_ANCESTOR_OF_FOCUSED_COMPONENT);
+		scorePanel.registerKeyboardAction(this, "No", KeyStroke.getKeyStroke(KeyEvent.VK_N, 0), JComponent.WHEN_ANCESTOR_OF_FOCUSED_COMPONENT);
 		scorePanel.add(maybeButton);
-		scorePanel.registerKeyboardAction(this, "Maybe",
-				KeyStroke.getKeyStroke(KeyEvent.VK_M, 0),
-				JComponent.WHEN_ANCESTOR_OF_FOCUSED_COMPONENT);
+		scorePanel.registerKeyboardAction(this, "Maybe", KeyStroke.getKeyStroke(KeyEvent.VK_M, 0), JComponent.WHEN_ANCESTOR_OF_FOCUSED_COMPONENT);
 		scorePanel.add(backButton);
-		scorePanel.registerKeyboardAction(this, "Back",
-				KeyStroke.getKeyStroke(KeyEvent.VK_B, 0),
-				JComponent.WHEN_ANCESTOR_OF_FOCUSED_COMPONENT);
+		scorePanel.registerKeyboardAction(this, "Back", KeyStroke.getKeyStroke(KeyEvent.VK_B, 0), JComponent.WHEN_ANCESTOR_OF_FOCUSED_COMPONENT);
 
 		messageText = new JTextArea(4, 40);
 		messageText.setEditable(false);
@@ -193,8 +181,7 @@ public class SnugViewer extends JFrame implements ActionListener,
 
 		trackContainer = new JPanel();
 		trackContainer.setBackground(Color.white);
-		trackContainer
-				.setLayout(new BoxLayout(trackContainer, BoxLayout.Y_AXIS));
+		trackContainer.setLayout(new BoxLayout(trackContainer, BoxLayout.Y_AXIS));
 		trackContainer.setBorder(BorderFactory.createEmptyBorder(0, 0, 0, 10));
 
 		nameContainer = new JPanel();
@@ -203,8 +190,7 @@ public class SnugViewer extends JFrame implements ActionListener,
 		nameContainer.setLayout(new BoxLayout(nameContainer, BoxLayout.Y_AXIS));
 		nameContainer.setBorder(BorderFactory.createEmptyBorder(0, 10, 0, 0));
 
-		JSplitPane mainPanel = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT,
-				nameContainer, trackContainer);
+		JSplitPane mainPanel = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, nameContainer, trackContainer);
 		mainPanel.setOneTouchExpandable(true);
 		mainPanel.setDividerLocation(100);
 		mainPanel.setAlignmentX(Component.LEFT_ALIGNMENT);
@@ -315,70 +301,55 @@ public class SnugViewer extends JFrame implements ActionListener,
 			dcd.setVisible(true);
 
 			if (dcd.isFilled()) {
+				
+				// which bam file type are we expecting?
+				// check that whatever file we are expecting is filled out
+				
 				// check all the dialog fields are valid paths to data
 				String bam = dcd.getBam().trim();
-				ArrayList<String> messages = new ArrayList<String>();
 
 				if (bam.equals("")) {
-					messages.add("ERROR: BAM(s) file field empty");
+					JOptionPane.showMessageDialog(null, "Loading files failed: BAM(s) file field empty, please try again", "Error", JOptionPane.ERROR_MESSAGE);
+					return;
 				}
 
 				String var = dcd.getVar();
 				if (var.equals("")) {
-					messages.add("ERROR: Variant file field empty");
+					JOptionPane.showMessageDialog(null, "Loading files failed: Variant file field empty, please try again", "Error", JOptionPane.ERROR_MESSAGE);
+					return;
 				}
 
 				String ref = dcd.getRef();
 				if (ref.equals("")) {
-					messages.add("ERROR: Reference file field empty");
-				}
-
-				if (messages.size() > 0) {
-					// we have found an error so print it and return
-					// TODO need to create an alert not print to the logging
-					// panel
-					// because the logging panel will not be visable
-					// use logging panel for only success messages
-					printMessage(messages);
+					JOptionPane.showMessageDialog(null, "Loading files failed: Reference file field empty, please try again", "Error", JOptionPane.ERROR_MESSAGE);
 					return;
-				} else {
+				}
 
-					remoteSession = null;
-					// if any of the files have been selected to come from a
-					// remote source then create a jsch session
-					// otherwise the remoteSession will remain null
-					if (dcd.remoteBam() | dcd.remoteRef() | dcd.remoteVar()) {
-						try {
-							remoteSession = createRemoteSession();
-						} catch (JSchException e) {
-							// TODO Auto-generated catch block
-							e.printStackTrace();
-
-							// JOptionPane.showMessageDialog(
-							// null,
-							// "Unable to open the selected variants file:\n"
-							// + e.toString(), "Error",
-							// JOptionPane.ERROR_MESSAGE);
-
-						}
-					}
-
-					// if we fail to open any bams then go no further
-					if (!openBams(bam)) {
-						return;
-					}
-					// if we fail to load any variants then go no further
-					if (!openVariants(var)) {
-						return;
-					}
-					// if we fail to load a reference then go no further
-					if (!openReference(ref)) {
+				remoteSession = null;
+				// if any of the files have been selected to come from a remote source then create a jsch session
+				if (dcd.remoteBam() | dcd.remoteRef() | dcd.remoteVar()) {
+					try {
+						remoteSession = createRemoteSession();
+					} catch (JSchException e) {
+						JOptionPane.showMessageDialog(null, "Connection to remote server failed:\n" + e.toString() + "\nPlease check your login details and try again", "Error", JOptionPane.ERROR_MESSAGE);
 						return;
 					}
 				}
 
-				// if opening all the required files is successful then load the
-				// first variant
+				// if we fail to open any bams then go no further
+				if (!openBams(bam)) {
+					return;
+				}
+				// if we fail to load any variants then go no further
+				if (!openVariants(var)) {
+					return;
+				}
+				// if we fail to load a reference then go no further
+				if (!openReference(ref)) {
+					return;
+				}
+
+				// if opening all the required files is successful then load the first variant
 				currentVariantIndex = 0;
 				displayVariantIndex = currentVariantIndex;
 				activeScorePanel(true);
@@ -423,10 +394,7 @@ public class SnugViewer extends JFrame implements ActionListener,
 			refName = refFile.getName();
 			printMessage("Loaded reference file: '" + ref + "'");
 		} catch (FileNotFoundException e) {
-			JOptionPane.showMessageDialog(
-					null,
-					"Unable to open the selected reference file:\n"
-							+ e.toString(), "Error", JOptionPane.ERROR_MESSAGE);
+			JOptionPane.showMessageDialog(null, "Unable to open the selected reference file:\n" + e.toString(), "Error", JOptionPane.ERROR_MESSAGE);
 			return false;
 		}
 		return true;
@@ -437,32 +405,22 @@ public class SnugViewer extends JFrame implements ActionListener,
 		try {
 			variantListFile = new VariantListFile(var);
 		} catch (IOException e) {
-			JOptionPane.showMessageDialog(
-					null,
-					"Unable to open the selected variants file:\n"
-							+ e.toString(), "Error", JOptionPane.ERROR_MESSAGE);
+			JOptionPane.showMessageDialog(null, "Unable to open the selected variants file:\n" + e.toString(), "Error", JOptionPane.ERROR_MESSAGE);
 			return false;
 		} catch (NumberFormatException e) {
-			JOptionPane.showMessageDialog(null,
-					"Position value in variants file is not a number", "Error",
-					JOptionPane.ERROR_MESSAGE);
+			JOptionPane.showMessageDialog(null, "Position value in variants file is not a number", "Error", JOptionPane.ERROR_MESSAGE);
 			return false;
 		} catch (UnrecognisedVariantFileFormat e) {
-			JOptionPane.showMessageDialog(null,
-					"Unrecognised variant file format: " + e.getMessage(),
-					"Error", JOptionPane.ERROR_MESSAGE);
+			JOptionPane.showMessageDialog(null, "Unrecognised variant file format: " + e.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
 			return false;
 		}
 
 		variantList = variantListFile.getVariants();
-		printMessage(variantList.size() + " variants loaded from: '" + var
-				+ "'");
+		printMessage(variantList.size() + " variants loaded from: '" + var + "'");
 		output = checkOverwriteFile(new File(var + ".scores"));
 
 		if (output == null) {
-			JOptionPane.showMessageDialog(null,
-					"Unable to open the selected output file:\n", "Error",
-					JOptionPane.ERROR_MESSAGE);
+			JOptionPane.showMessageDialog(null, "Unable to open the selected output file:\n", "Error", JOptionPane.ERROR_MESSAGE);
 			return false;
 		}
 
@@ -531,7 +489,8 @@ public class SnugViewer extends JFrame implements ActionListener,
 					} else {
 
 						// check if the line contains 1 or 2 columns
-						// the second column can contain a short name for the bam
+						// the second column can contain a short name for the
+						// bam
 						currentline = currentline.trim();
 						String[] values = currentline.split("\\t+");
 						String bamName = null;
@@ -541,7 +500,8 @@ public class SnugViewer extends JFrame implements ActionListener,
 							bamName = values[0];
 							bamDisplayName = values[0];
 						} else if (values.length > 1) {
-							// not expecting any more than 2 columns so ignore addition columns
+							// not expecting any more than 2 columns so ignore
+							// addition columns
 							bamName = values[0];
 							bamDisplayName = values[1];
 						}
@@ -555,16 +515,13 @@ public class SnugViewer extends JFrame implements ActionListener,
 								printMessage("Loaded BAM: '" + b + "'");
 							}
 						} else {
-							// assume to start with that the list of bams is local and
-							// the paths in the file point to a remote location
-
-							// therefore we dont care about the directory the file is in on
-							// the local machine
+							// assume to start with that the list of bams is local and the paths in the file point to a remote location
+							// therefore we dont care about the directory the file is in on the local machine
 							remoteBams.add(bamName);
 							bamNames.add(bamDisplayName);
 							printMessage("Loaded BAM: '" + bamName + "'");
 
-						}						
+						}
 					}
 				}
 			} catch (IOException e) {
@@ -579,9 +536,7 @@ public class SnugViewer extends JFrame implements ActionListener,
 			}
 
 		} else {
-			JOptionPane.showMessageDialog(null,
-					"Bam file should end .bam or .bams:\n", "Error",
-					JOptionPane.ERROR_MESSAGE);
+			JOptionPane.showMessageDialog(null, "Bam file should end .bam or .bams:\n", "Error", JOptionPane.ERROR_MESSAGE);
 			return false;
 		}
 		return true;
@@ -593,17 +548,9 @@ public class SnugViewer extends JFrame implements ActionListener,
 
 		if (!bamIndexFile.exists()) {
 			String ls = System.getProperty("line.separator");
-			String msg = "BAM index file is missing. The BAM file needs to be sorted and indexed"
-					+ ls
-					+ "This can be done using samtools (http://samtools.sf.net/):"
-					+ ls
-					+ ls
-					+ "samtools sort <in.bam> <out.prefix>"
-					+ ls
-					+ "samtools index <sorted.bam>";
+			String msg = "BAM index file is missing. The BAM file needs to be sorted and indexed" + ls + "This can be done using samtools (http://samtools.sf.net/):" + ls + ls + "samtools sort <in.bam> <out.prefix>" + ls + "samtools index <sorted.bam>";
 
-			JOptionPane.showMessageDialog(null, msg, "Error",
-					JOptionPane.ERROR_MESSAGE);
+			JOptionPane.showMessageDialog(null, msg, "Error", JOptionPane.ERROR_MESSAGE);
 
 			return Boolean.FALSE;
 		} else {
@@ -616,10 +563,9 @@ public class SnugViewer extends JFrame implements ActionListener,
 
 		trackContainer.removeAll();
 		nameContainer.removeAll();
-
+		
 		if (totalBams > 0) {
 			Variant v = variantList.get(displayVariantIndex);
-
 			this.setTitle(v.getName());
 
 			trackContainer.removeAll();
@@ -628,10 +574,7 @@ public class SnugViewer extends JFrame implements ActionListener,
 			// calculate the height of each panel
 			int refPanelHeight = 50;
 			int border = 40;
-			int height = trackContainer.getHeight()
-					- (controlsPanel.getHeight() + mb.getHeight())
-					- refPanelHeight - border;
-			int trackHeight = height / totalBams;
+			int trackHeight = (trackContainer.getHeight() - (controlsPanel.getHeight() + mb.getHeight()) - refPanelHeight - border) / totalBams;
 			int width = trackContainer.getWidth();
 			int visableBases = width / pixPerBase;
 
@@ -651,92 +594,53 @@ public class SnugViewer extends JFrame implements ActionListener,
 			// distance in pix to the variant site
 			int offset = basesOneSide * pixPerBase;
 
-			// get the reads for the region
-			ArrayList<SAMRecord> reads = new ArrayList<SAMRecord>();
-
 			if (remoteSession == null) {
 				for (SAMFileReader sfr : bams) {
 
-					SAMRecordIterator readsItr = sfr.queryOverlapping(
-							v.getChr(), v.getPos(), v.getPos());
+					SAMRecordIterator readsItr = sfr.queryOverlapping(v.getChr(), v.getPos(), v.getPos());
 
+					ArrayList<SAMRecord> reads = new ArrayList<SAMRecord>();
 					while (readsItr.hasNext()) {
 						reads.add(readsItr.next());
 					}
 					readsItr.close();
-
-					AlignmentPanel ap = new AlignmentPanel(pixPerBase, offset,
-							reads, v, height, referenceFile, collapseView);
-
-					ap.setPreferredSize(new Dimension(width, trackHeight));
-					setBackground(Color.white);
-					ap.setBorder(BorderFactory.createLineBorder(Color.black));
-
-					trackContainer.add(ap);
+					
+					generateAlignmentPanel(pixPerBase, offset, reads, v, trackHeight, width, referenceFile, collapseView);										
 				}
 			} else {
 				for (String bam : remoteBams) {
-					String cmd = "samtools view -h " + bam + " " + v.getChr()
-							+ ":" + v.getPos() + "-" + v.getPos();
-					// create a channel connected to a remotely executing
-					// program
+					String cmd = "samtools view -h " + bam + " " + v.getChr() + ":" + v.getPos() + "-" + v.getPos();
+					// create a channel connected to a remotely executing program
 					Channel channel = remoteSession.openChannel("exec");
-
 					((ChannelExec) channel).setCommand(cmd);
-
-					// capture the error stream and parse it to deliver sensible
-					// message to the user
-					// The standard error output of the remote process will be
-					// sent to this stream
+					// capture the error stream and parse it to deliver sensible message to the user
+					// The standard error output of the remote process will be sent to this stream
 					((ChannelExec) channel).setErrStream(System.err);
-
 					InputStream inputstream = channel.getInputStream();
-
 					channel.connect();
 
-					if (channel.getExitStatus() != 0) {
-						SAMRecordIterator readsItr = new SAMFileReader(
-								inputstream, true).iterator();
+					ArrayList<SAMRecord> reads = new ArrayList<SAMRecord>();
 
+					if (channel.getExitStatus() != 0) {
+						SAMRecordIterator readsItr = new SAMFileReader(inputstream, true).iterator();
 						while (readsItr.hasNext()) {
 							reads.add(readsItr.next());
 						}
 					} else {
-						// tell the user that the remote command failed
+						JOptionPane.showMessageDialog(null, "Remote command failed: " + cmd, "Error", JOptionPane.ERROR_MESSAGE);
 					}
 					
-					AlignmentPanel ap = new AlignmentPanel(pixPerBase, offset,
-							reads, v, height, referenceFile, collapseView);
-
-					ap.setPreferredSize(new Dimension(width, trackHeight));
-					setBackground(Color.white);
-					ap.setBorder(BorderFactory.createLineBorder(Color.black));
-
-					trackContainer.add(ap);
-					
+					generateAlignmentPanel(pixPerBase, offset, reads, v, trackHeight, width, referenceFile, collapseView);
 				}
-				
-				
-				
-				
+
 			}
-
-			AlignmentPanel ap = new AlignmentPanel(pixPerBase, offset, reads,
-					v, height, referenceFile, collapseView);
-
-			ap.setPreferredSize(new Dimension(width, trackHeight));
-			setBackground(Color.white);
-			ap.setBorder(BorderFactory.createLineBorder(Color.black));
-
-			trackContainer.add(ap);
 
 			// draw the reference panel
 			int refStart = v.getPos() - basesOneSide;
 			// add the variant base to the bases either side
 			int refEnd = v.getPos() + basesOneSide + 1;
 
-			ReferencePanel rp = new ReferencePanel(pixPerBase, v,
-					referenceFile, refStart, refEnd);
+			ReferencePanel rp = new ReferencePanel(pixPerBase, v, referenceFile, refStart, refEnd);
 			rp.setPreferredSize(new Dimension(width, refPanelHeight));
 			trackContainer.add(rp);
 
@@ -745,8 +649,7 @@ public class SnugViewer extends JFrame implements ActionListener,
 				JPanel nameHolder = new JPanel();
 				nameHolder.add(new JLabel(bamName));
 				nameHolder.setPreferredSize(new Dimension(100, trackHeight));
-				nameHolder.setBorder(BorderFactory
-						.createLineBorder(Color.black));
+				nameHolder.setBorder(BorderFactory.createLineBorder(Color.black));
 				nameContainer.add(nameHolder);
 			}
 
@@ -759,6 +662,22 @@ public class SnugViewer extends JFrame implements ActionListener,
 			this.repaint();
 		}
 
+	}
+
+	private void generateAlignmentPanel(int pixPerBase2, int offset, ArrayList<SAMRecord> reads, Variant v, int height, int width, IndexedFastaSequenceFile referenceFile2, boolean collapseView2) {
+		if (reads.size() > 0) {
+			AlignmentPanel ap = new AlignmentPanel(pixPerBase, offset, reads, v, height, referenceFile, collapseView);
+			ap.setPreferredSize(new Dimension(width, height));
+			setBackground(Color.white);
+			ap.setBorder(BorderFactory.createLineBorder(Color.black));
+			trackContainer.add(ap);
+		} else {
+			JLabel jl = new JLabel("No reads found");
+			jl.setPreferredSize(new Dimension(width, height));
+			setBackground(Color.white);
+			jl.setBorder(BorderFactory.createLineBorder(Color.black));
+			trackContainer.add(jl);
+		}	
 	}
 
 	private void printScores() throws FileNotFoundException {
@@ -808,14 +727,7 @@ public class SnugViewer extends JFrame implements ActionListener,
 	private File checkOverwriteFile(File file) {
 
 		if (file.exists()) {
-			int n = JOptionPane
-					.showConfirmDialog(
-							this.getContentPane(),
-							"The file "
-									+ file.getName()
-									+ " already exists\n would you like to overwrite this file?",
-							"Overwrite file?", JOptionPane.YES_NO_OPTION,
-							JOptionPane.QUESTION_MESSAGE);
+			int n = JOptionPane.showConfirmDialog(this.getContentPane(), "The file " + file.getName() + " already exists\n would you like to overwrite this file?", "Overwrite file?", JOptionPane.YES_NO_OPTION, JOptionPane.QUESTION_MESSAGE);
 			// n 0 = yes 1 = no
 			if (n == 1) {
 				JFileChooser jfc = new JFileChooser("user.dir");
@@ -861,10 +773,7 @@ public class SnugViewer extends JFrame implements ActionListener,
 			} else {
 				drawReads();
 				activeScorePanel(false);
-				int n = JOptionPane.showConfirmDialog(this.getContentPane(),
-						"Would you like to finish scoring the current list?",
-						"Finish scoring list?", JOptionPane.YES_NO_OPTION,
-						JOptionPane.QUESTION_MESSAGE);
+				int n = JOptionPane.showConfirmDialog(this.getContentPane(), "Would you like to finish scoring the current list?", "Finish scoring list?", JOptionPane.YES_NO_OPTION, JOptionPane.QUESTION_MESSAGE);
 				// n 0 = yes 1 = no
 				if (n == 0) {
 					variantList.clear();
