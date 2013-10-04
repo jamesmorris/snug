@@ -29,20 +29,18 @@ public class AlignmentPanel extends JPanel {
 	int pixPerBase;
 	int offset;
 	Variant variant;
-	int trackHeight;
 	IndexedFastaSequenceFile reference;
 	// interface options
 	private boolean collapse;
 	
 	ArrayList<BasePosition> baseCounts;
 	
-	public AlignmentPanel(int pixPerBase, int offset, ArrayList<SAMRecord> reads, Variant v, int height, IndexedFastaSequenceFile ref, boolean collapse) {
+	public AlignmentPanel(int pixPerBase, int offset, ArrayList<SAMRecord> reads, Variant v, IndexedFastaSequenceFile ref, boolean collapse) {
 		super();
 		this.pixPerBase = pixPerBase;
 		this.offset = offset;
 		this.reads = reads;
 		this.variant = v;
-		this.trackHeight = height;
 		this.reference = ref;
 		this.collapse = collapse;
 		
@@ -79,8 +77,8 @@ public class AlignmentPanel extends JPanel {
             	ypos += 15;
     		}
     		// draw lines before and after to show the position of the variant
-            g2.drawLine(offset-2, 0, offset-2, trackHeight);
-    		g2.drawLine(offset + (pixPerBase-2), 0, offset + (pixPerBase-2), trackHeight);
+            g2.drawLine(offset-2, 0, offset-2, this.getHeight());
+    		g2.drawLine(offset + (pixPerBase-2), 0, offset + (pixPerBase-2), this.getHeight());
     	}
     }
 	
@@ -96,8 +94,8 @@ public class AlignmentPanel extends JPanel {
             	ypos += 5;
     		}
     		// draw lines before and after to show the position of the variant
-            g2.drawLine(offset-2, 0, offset-2, trackHeight);
-    		g2.drawLine(offset + (pixPerBase-2), 0, offset + (pixPerBase-2), trackHeight);
+            g2.drawLine(offset-2, 0, offset-2, this.getHeight());
+    		g2.drawLine(offset + (pixPerBase-2), 0, offset + (pixPerBase-2), this.getHeight());
     	}
     }
 	
@@ -138,16 +136,14 @@ public class AlignmentPanel extends JPanel {
 				// update the base counts for the current position
 				int position = xpos / pixPerBase;
 				
-				// first test if the base is in view
-				if (xpos >= 0) {
-					try {
-						baseCounts.get(position).addBase(readBase);		
-					} catch (IndexOutOfBoundsException e) {
-						baseCounts.add(position, new BasePosition());
-						baseCounts.get(position).addBase(readBase);
-					}
-					g2.drawLine(xpos, ypos, xpos + pixPerBase, ypos);
-				}
+				try {
+					// try to increment the base count
+					baseCounts.get(position).addBase(readBase);		
+				} catch (IndexOutOfBoundsException e) {						
+					baseCounts.add(position, new BasePosition());
+					baseCounts.get(position).addBase(readBase);
+				} 
+				g2.drawLine(xpos, ypos, xpos + pixPerBase, ypos);
 			}			
 		}
 		
@@ -207,18 +203,18 @@ public class AlignmentPanel extends JPanel {
 				}				
 				
 				// update the base counts for the current position
-				int position = xpos / pixPerBase;
 				
-				// first test if the base is in view
-				if (xpos >= 0) {
-					try {
-						baseCounts.get(position).addBase(readBase);		
-					} catch (IndexOutOfBoundsException e) {
-						baseCounts.add(position, new BasePosition());
-						baseCounts.get(position).addBase(readBase);
-					}
-					g2.drawString(readBase, xpos, ypos);	
+				int position = xpos / pixPerBase;
+			
+				try {
+					// try to increment the base count
+					baseCounts.get(position).addBase(readBase);		
+				} catch (IndexOutOfBoundsException e) {						
+					baseCounts.add(position, new BasePosition());
+					baseCounts.get(position).addBase(readBase);
 				}
+				g2.drawString(readBase, xpos, ypos);	
+				
 			}			
 		}
 	
