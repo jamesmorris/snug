@@ -52,7 +52,7 @@ public class DataConnectionDialog extends JDialog implements ActionListener {
         bamPanel.add(new JLabel("BAM file: "));
         bamField = new JTextField(20);
         bamPanel.add(bamField);
-        bamButton = new JButton("Select BAM(s)");
+        bamButton = new JButton("Select BAM");
         bamButton.addActionListener(this);
         bamPanel.add(bamButton);
         
@@ -217,18 +217,30 @@ public class DataConnectionDialog extends JDialog implements ActionListener {
             filled = true;
             this.dispose();
             
-        }else if (e.getActionCommand().equals("Select BAM(s)")) {
+        } else if (e.getActionCommand().equals("Select BAM")) {
 //            JFileChooser jfc = new JFileChooser("user.dir");
         	// for testing only
             JFileChooser jfc = new JFileChooser("/Users/jm20/Documents/snug");
             jfc.setDialogTitle("Select BAM(s)");
             jfc.setApproveButtonText("Select BAM(s)");
-            jfc.setApproveButtonToolTipText("Select your indexed BAM file or file containing a list of paths to your BAM files");
+            jfc.setApproveButtonToolTipText("Select your indexed BAM file");
             
             if (jfc.showOpenDialog(this) == JFileChooser.APPROVE_OPTION){
             	bamField.setText(jfc.getSelectedFile().getAbsolutePath());
             }
             
+        } else if (e.getActionCommand().equals("Select BAM list")) {
+//          JFileChooser jfc = new JFileChooser("user.dir");
+      	// for testing only
+          JFileChooser jfc = new JFileChooser("/Users/jm20/Documents/snug");
+          jfc.setDialogTitle("Select BAM list");
+          jfc.setApproveButtonText("Select BAM list");
+          jfc.setApproveButtonToolTipText("Select a file containing a list of paths to your BAM files");
+          
+          if (jfc.showOpenDialog(this) == JFileChooser.APPROVE_OPTION){
+          	bamListField.setText(jfc.getSelectedFile().getAbsolutePath());
+          }
+          
         } else if (e.getActionCommand().equals("Select Variants")) {
 //        	JFileChooser jfc = new JFileChooser("user.dir");
         	// for testing only
@@ -283,7 +295,6 @@ public class DataConnectionDialog extends JDialog implements ActionListener {
         	}
         	
         } else if (e.getActionCommand().equals("bamListRemote")) {
-        	bamListButton.setEnabled(false);
         	hostField.setEnabled(true);
         	portField.setEnabled(true);
         	userField.setEnabled(true);
@@ -345,7 +356,7 @@ public class DataConnectionDialog extends JDialog implements ActionListener {
     }
 
 	public String getRef() {
-		return refFile;
+		return refFile.trim();
 	}
 
 	public boolean localRef() {
@@ -357,7 +368,7 @@ public class DataConnectionDialog extends JDialog implements ActionListener {
 	}
 	
 	public String getVar() {
-		return varFile;
+		return varFile.trim();
 	}
 
 	public boolean localVar() {
@@ -369,11 +380,11 @@ public class DataConnectionDialog extends JDialog implements ActionListener {
 	}
 	
 	public String getBam() {
-		return bamFile;
+		return bamFile.trim();
 	}
 	
 	public String getBamList() {
-		return bamList;
+		return bamList.trim();
 	}
 	
 	public boolean localBam() {
@@ -384,8 +395,16 @@ public class DataConnectionDialog extends JDialog implements ActionListener {
 		return bamRemoteButton.isSelected();
 	}
 	
+	public boolean singleBam() {
+		return singleButton.isSelected();
+	}
+	
+	public boolean multipleBam() {
+		return multipleButton.isSelected();
+	}
+	
 	public String getHost() {
-		return host;
+		return host.trim();
 	}
 
 	public int getPort() {
@@ -393,7 +412,7 @@ public class DataConnectionDialog extends JDialog implements ActionListener {
 	}
 
 	public String getUsername() {
-		return username;
+		return username.trim();
 	}
 
 	public String getPassword() {
