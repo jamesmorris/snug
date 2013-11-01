@@ -18,8 +18,6 @@ import javax.swing.JSplitPane;
 import javax.swing.JTextArea;
 import javax.swing.KeyStroke;
 import javax.swing.ScrollPaneConstants;
-import javax.swing.SwingConstants;
-
 import java.awt.Color;
 import java.awt.Component;
 import java.awt.Dimension;
@@ -43,11 +41,11 @@ import java.io.PrintStream;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.HashMap;
-import java.util.Iterator;
 import java.util.ListIterator;
 import java.util.ArrayList;
 
 import net.sf.samtools.SAMFileReader;
+import net.sf.samtools.SAMFormatException;
 import net.sf.samtools.SAMRecord;
 import net.sf.samtools.SAMRecordIterator;
 import net.sf.picard.reference.IndexedFastaSequenceFile;
@@ -76,13 +74,15 @@ public class SnugViewer extends JFrame implements ActionListener, ComponentListe
 	private JMenu fileMenu;
 	private JMenu viewMenu;
 	private JCheckBoxMenuItem collapseViewCB;
-	private JCheckBoxMenuItem referenceOnTopCB;	
+	private JCheckBoxMenuItem referenceOnTopCB;
+	private JCheckBoxMenuItem hideRefBasesCB;
 	private DataConnectionDialog dcd;
 	private JMenuBar mb;
 	private JPanel trackContainer;
 	private JPanel nameContainer;
 	private String refName;
 	private JPanel contentPanel;
+
 
 	//
 	// Global arrays
@@ -109,7 +109,21 @@ public class SnugViewer extends JFrame implements ActionListener, ComponentListe
 	// set the default view settings
 	private boolean collapseView = false;
 	private boolean refernceOnTop = false;
+	private boolean hideRefBases = false;
 	private int totalBams = 0;
+	
+	//
+	// UI commands
+	//
+	private String yesCommand = "Yes";
+	private String noCommand = "No";
+	private String maybeCommand = "Maybe";
+	private String backCommand = "Back";
+	private String openFilesCommand = "Load Files";
+	private String quitCommand = "Quit";
+	private String collapseViewCommand = "Collapse view";
+	private String referenceOnTopCommand = "Reference on top";
+	private String hideRefBasesCommand = "Hide reference bases";
 
 	public static void main(String[] args) {
 		new SnugViewer();
@@ -124,7 +138,7 @@ public class SnugViewer extends JFrame implements ActionListener, ComponentListe
 		int menumask = Toolkit.getDefaultToolkit().getMenuShortcutKeyMask();
 
 		fileMenu = new JMenu("File");
-		JMenuItem loadFiles = new JMenuItem("Load Files");
+		JMenuItem loadFiles = new JMenuItem(openFilesCommand);
 		loadFiles.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_B, menumask));
 		loadFiles.addActionListener(this);
 		fileMenu.add(loadFiles);
@@ -132,15 +146,20 @@ public class SnugViewer extends JFrame implements ActionListener, ComponentListe
 		mb.add(fileMenu);
 
 		viewMenu = new JMenu("View");
-		collapseViewCB = new JCheckBoxMenuItem("Collapse view");
+		collapseViewCB = new JCheckBoxMenuItem(collapseViewCommand);
 		collapseViewCB.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_C, menumask));
 		collapseViewCB.addActionListener(this);
 		collapseViewCB.setEnabled(false);
 		viewMenu.add(collapseViewCB);
-		referenceOnTopCB = new JCheckBoxMenuItem("Reference on top");
+		referenceOnTopCB = new JCheckBoxMenuItem(referenceOnTopCommand);
 		referenceOnTopCB.addActionListener(this);
 		referenceOnTopCB.setEnabled(false);
 		viewMenu.add(referenceOnTopCB);
+		hideRefBasesCB = new JCheckBoxMenuItem(hideRefBasesCommand);
+		hideRefBasesCB.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_H, menumask));
+		hideRefBasesCB.addActionListener(this);
+		hideRefBasesCB.setEnabled(false);
+		viewMenu.add(hideRefBasesCB);
 
 		mb.add(viewMenu);
 
@@ -153,32 +172,32 @@ public class SnugViewer extends JFrame implements ActionListener, ComponentListe
 
 		setJMenuBar(mb);
 
-		yesButton = new JButton("Yes");
+		yesButton = new JButton(yesCommand);
 		yesButton.addActionListener(this);
 		yesButton.setEnabled(false);
 
-		maybeButton = new JButton("Maybe");
+		maybeButton = new JButton(maybeCommand);
 		maybeButton.addActionListener(this);
 		maybeButton.setEnabled(false);
 
-		noButton = new JButton("No");
+		noButton = new JButton(noCommand);
 		noButton.addActionListener(this);
 		noButton.setEnabled(false);
 
-		backButton = new JButton("Back");
+		backButton = new JButton(backCommand);
 		backButton.addActionListener(this);
 		backButton.setEnabled(false);
 
 		scorePanel = new JPanel();
 		scorePanel.add(new JLabel("Approve?"));
 		scorePanel.add(yesButton);
-		scorePanel.registerKeyboardAction(this, "Yes", KeyStroke.getKeyStroke(KeyEvent.VK_Y, 0), JComponent.WHEN_ANCESTOR_OF_FOCUSED_COMPONENT);
+		scorePanel.registerKeyboardAction(this, yesCommand, KeyStroke.getKeyStroke(KeyEvent.VK_Y, 0), JComponent.WHEN_ANCESTOR_OF_FOCUSED_COMPONENT);
 		scorePanel.add(noButton);
-		scorePanel.registerKeyboardAction(this, "No", KeyStroke.getKeyStroke(KeyEvent.VK_N, 0), JComponent.WHEN_ANCESTOR_OF_FOCUSED_COMPONENT);
+		scorePanel.registerKeyboardAction(this, noCommand, KeyStroke.getKeyStroke(KeyEvent.VK_N, 0), JComponent.WHEN_ANCESTOR_OF_FOCUSED_COMPONENT);
 		scorePanel.add(maybeButton);
-		scorePanel.registerKeyboardAction(this, "Maybe", KeyStroke.getKeyStroke(KeyEvent.VK_M, 0), JComponent.WHEN_ANCESTOR_OF_FOCUSED_COMPONENT);
+		scorePanel.registerKeyboardAction(this, maybeCommand, KeyStroke.getKeyStroke(KeyEvent.VK_M, 0), JComponent.WHEN_ANCESTOR_OF_FOCUSED_COMPONENT);
 		scorePanel.add(backButton);
-		scorePanel.registerKeyboardAction(this, "Back", KeyStroke.getKeyStroke(KeyEvent.VK_B, 0), JComponent.WHEN_ANCESTOR_OF_FOCUSED_COMPONENT);
+		scorePanel.registerKeyboardAction(this, backCommand, KeyStroke.getKeyStroke(KeyEvent.VK_B, 0), JComponent.WHEN_ANCESTOR_OF_FOCUSED_COMPONENT);
 
 		messageText = new JTextArea(4, 40);
 		messageText.setEditable(false);
@@ -221,15 +240,6 @@ public class SnugViewer extends JFrame implements ActionListener, ComponentListe
 	}
 
 	public void actionPerformed(ActionEvent actionEvent) {
-
-		String yesCommand = "Yes";
-		String noCommand = "No";
-		String maybeCommand = "Maybe";
-		String backCommand = "Back";
-		String openFilesCommand = "Load Files";
-		String quitCommand = "Quit";
-		String collapseViewCommand = "Collapse view";
-		String referenceOnTopCommand = "Reference on top";
 
 		String command = actionEvent.getActionCommand();
 		if (command.equals(noCommand)) {
@@ -314,6 +324,23 @@ public class SnugViewer extends JFrame implements ActionListener, ComponentListe
 				refernceOnTop = true;
 			} else {
 				refernceOnTop = false;
+			}
+			if (displayVariantIndex != null) {
+				try {
+					drawReads();
+				} catch (JSchException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				} catch (IOException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				}
+			}
+		} else if (command.equals(hideRefBasesCommand)) {
+			if (hideRefBasesCB.isSelected()) {
+				hideRefBases = true;
+			} else {
+				hideRefBases = false;
 			}
 			if (displayVariantIndex != null) {
 				try {
@@ -627,26 +654,33 @@ public class SnugViewer extends JFrame implements ActionListener, ComponentListe
 				for (SAMFileReader sfr : bams) {
 					ArrayList<SAMRecord> reads = new ArrayList<SAMRecord>();
 					
-					SAMRecordIterator readsItr = sfr.queryOverlapping(v.getChr(), v.getPos(), v.getPos());					
-										
-					while (readsItr.hasNext()) {
-						SAMRecord read = readsItr.next();
-						if (firstRead) {
-							alignmentStart = read.getAlignmentStart();
-							alignmentEnd = read.getAlignmentEnd();
-							firstRead = false;
-						} else {
-							if (read.getAlignmentStart() < alignmentStart) {
-								alignmentStart = read.getAlignmentStart();
-							}
-							if (read.getAlignmentEnd() > alignmentEnd) {
-								alignmentEnd = read.getAlignmentEnd();
-							}
-						}
-						reads.add(read);
+					SAMRecordIterator readsItr = null;
+					try {
+						readsItr = sfr.queryOverlapping(v.getChr(), v.getPos(), v.getPos());
+					} catch (SAMFormatException sfe) {
+						JOptionPane.showMessageDialog(null, sfe.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
 					}
-					readsItr.close();
-					readArray.add(reads);
+										
+					if (readsItr != null) {
+						while (readsItr.hasNext()) {
+							SAMRecord read = readsItr.next();
+							if (firstRead) {
+								alignmentStart = read.getAlignmentStart();
+								alignmentEnd = read.getAlignmentEnd();
+								firstRead = false;
+							} else {
+								if (read.getAlignmentStart() < alignmentStart) {
+									alignmentStart = read.getAlignmentStart();
+								}
+								if (read.getAlignmentEnd() > alignmentEnd) {
+									alignmentEnd = read.getAlignmentEnd();
+								}
+							}
+							reads.add(read);
+						}
+						readsItr.close();
+						readArray.add(reads);
+					}					
 				}
 			} else {
 				for (String bam : remoteBams) {
@@ -716,7 +750,7 @@ public class SnugViewer extends JFrame implements ActionListener, ComponentListe
 			
 			// loop through each read array and generate the alignment panels
 			for (ArrayList<SAMRecord> reads : readArray) {
-				generateAlignmentPanel(pixPerBase, offset, reads, v, trackHeight, alignmentWidth, referenceFile, collapseView, refScrollModel);
+				generateAlignmentPanel(pixPerBase, offset, reads, v, trackHeight, alignmentWidth, refScrollModel);
 			}
 			
 			// if ref top is false then print the reference panel here
@@ -761,14 +795,19 @@ public class SnugViewer extends JFrame implements ActionListener, ComponentListe
 			nameContainer.add(nameScrollPane);
 
 			this.setVisible(true);
+			
+			// now everything is painted move the scrollbar to the middle of the window
+			int mid = ((scrollBar.getMaximum() - scrollBar.getVisibleAmount()) - scrollBar.getMinimum()) / 2;
+			scrollBar.setValue(mid);
+			
 			this.repaint();
 		}
 
 	}
 
-	private void generateAlignmentPanel(int pixPerBase2, int offset, ArrayList<SAMRecord> reads, Variant v, int height, int width, IndexedFastaSequenceFile referenceFile2, boolean collapseView2, BoundedRangeModel model) {
+	private void generateAlignmentPanel(int pixPerBase2, int offset, ArrayList<SAMRecord> reads, Variant v, int height, int width, BoundedRangeModel model) {
 		if (reads.size() > 0) {
-			AlignmentPanel ap = new AlignmentPanel(pixPerBase, offset, reads, v, referenceFile, collapseView);
+			AlignmentPanel ap = new AlignmentPanel(pixPerBase, offset, reads, v, referenceFile, collapseView, hideRefBases);
 			ap.setPreferredSize(new Dimension(width, height));
 			setBackground(Color.white);
 			ap.setBorder(BorderFactory.createLineBorder(Color.black));
@@ -810,6 +849,7 @@ public class SnugViewer extends JFrame implements ActionListener, ComponentListe
 			scorePanel.setEnabled(true);
 			collapseViewCB.setEnabled(true);
 			referenceOnTopCB.setEnabled(true);
+			hideRefBasesCB.setEnabled(true);
 			if (currentVariantIndex == 0 || displayVariantIndex == 0) {
 				backButton.setEnabled(false);
 			} else {
@@ -823,6 +863,7 @@ public class SnugViewer extends JFrame implements ActionListener, ComponentListe
 			scorePanel.setEnabled(false);
 			collapseViewCB.setEnabled(false);
 			referenceOnTopCB.setEnabled(false);
+			hideRefBasesCB.setEnabled(false);
 		}
 	}
 
