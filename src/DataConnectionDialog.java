@@ -49,19 +49,19 @@ public class DataConnectionDialog extends JDialog implements ActionListener {
         singleButton.addActionListener(this);
         singleButton.setSelected(true);
         bamPanel.add(singleButton);
-        bamPanel.add(new JLabel("BAM file: "));
+        bamPanel.add(new JLabel("Single BAM: "));
         bamField = new JTextField(20);
         bamPanel.add(bamField);
         bamButton = new JButton("Select BAM");
         bamButton.addActionListener(this);
         bamPanel.add(bamButton);
         
-        bamLocalButton = new JRadioButton("Local");        
+        bamLocalButton = new JRadioButton("Local path");        
         bamLocalButton.setActionCommand("bamLocal");
         bamLocalButton.addActionListener(this);
         bamLocalButton.setSelected(true);
         
-        bamRemoteButton = new JRadioButton("Remote");
+        bamRemoteButton = new JRadioButton("Remote path");
         bamRemoteButton.setActionCommand("bamRemote");
         bamRemoteButton.addActionListener(this);
         
@@ -79,7 +79,7 @@ public class DataConnectionDialog extends JDialog implements ActionListener {
         multipleButton.setActionCommand("multipleBam");
         multipleButton.addActionListener(this);
         bamListPanel.add(multipleButton);
-        bamListPanel.add(new JLabel("BAM list: "));
+        bamListPanel.add(new JLabel("Multiple BAMs: "));
         bamListField = new JTextField(20);
         bamListField.setEditable(false);
         bamListPanel.add(bamListField);
@@ -88,13 +88,13 @@ public class DataConnectionDialog extends JDialog implements ActionListener {
         bamListButton.setEnabled(false);
         bamListPanel.add(bamListButton);
         
-        bamListLocalButton = new JRadioButton("Local");        
+        bamListLocalButton = new JRadioButton("Local paths");        
         bamListLocalButton.setActionCommand("bamListLocal");
         bamListLocalButton.addActionListener(this);
         bamListLocalButton.setEnabled(false);
         bamListLocalButton.setSelected(true);
         
-        bamListRemoteButton = new JRadioButton("Remote");
+        bamListRemoteButton = new JRadioButton("Remote paths");
         bamListRemoteButton.setActionCommand("bamListRemote");
         bamListRemoteButton.addActionListener(this);
         bamListRemoteButton.setEnabled(false);
@@ -125,11 +125,13 @@ public class DataConnectionDialog extends JDialog implements ActionListener {
         varLocalButton.setActionCommand("varLocal");
         varLocalButton.addActionListener(this);
         varLocalButton.setSelected(true);
+        varLocalButton.setVisible(false);
         
         varRemoteButton = new JRadioButton("Remote");
         varRemoteButton.setActionCommand("varRemote");
         varRemoteButton.addActionListener(this);
         varRemoteButton.setEnabled(false);
+        varRemoteButton.setVisible(false);
         
         ButtonGroup varFileSource = new ButtonGroup();
         varFileSource.add(varLocalButton);
@@ -152,11 +154,13 @@ public class DataConnectionDialog extends JDialog implements ActionListener {
         refLocalButton.setActionCommand("refLocal");
         refLocalButton.addActionListener(this);
         refLocalButton.setSelected(true);
+        refLocalButton.setVisible(false);
         
         refRemoteButton = new JRadioButton("Remote");
         refRemoteButton.setActionCommand("refRemote");
         refRemoteButton.addActionListener(this);
         refRemoteButton.setEnabled(false);
+        refRemoteButton.setVisible(false);
         
         ButtonGroup refFileSource = new ButtonGroup();
         refFileSource.add(refLocalButton);
