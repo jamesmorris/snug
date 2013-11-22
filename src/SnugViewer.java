@@ -1,6 +1,7 @@
 import javax.swing.BorderFactory;
 import javax.swing.BoundedRangeModel;
 import javax.swing.BoxLayout;
+import javax.swing.ButtonGroup;
 import javax.swing.JButton;
 import javax.swing.JCheckBoxMenuItem;
 import javax.swing.JComponent;
@@ -12,6 +13,7 @@ import javax.swing.JMenuBar;
 import javax.swing.JMenuItem;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
+import javax.swing.JRadioButtonMenuItem;
 import javax.swing.JScrollBar;
 import javax.swing.JScrollPane;
 import javax.swing.JSplitPane;
@@ -73,9 +75,6 @@ public class SnugViewer extends JFrame implements ActionListener, ComponentListe
 	private JButton backButton;
 	private JMenu fileMenu;
 	private JMenu viewMenu;
-	private JCheckBoxMenuItem collapseViewCB;
-	private JCheckBoxMenuItem referenceOnTopCB;
-	private JCheckBoxMenuItem hideRefBasesCB;
 	private DataConnectionDialog dcd;
 	private JMenuBar mb;
 	private JPanel trackContainer;
@@ -110,6 +109,7 @@ public class SnugViewer extends JFrame implements ActionListener, ComponentListe
 	private boolean collapseView = false;
 	private boolean refernceOnTop = false;
 	private boolean hideRefBases = false;
+	private boolean mappingQuality = false;
 	private int totalBams = 0;
 	
 	//
@@ -121,10 +121,27 @@ public class SnugViewer extends JFrame implements ActionListener, ComponentListe
 	private String backCommand = "Back";
 	private String openFilesCommand = "Load Files";
 	private String quitCommand = "Quit";
-	private String collapseViewCommand = "Collapse view";
-	private String referenceOnTopCommand = "Reference on top";
-	private String hideRefBasesCommand = "Hide reference bases";
+	private String mappingQualityCommand = "Colour by mapping quality";
+	private String collapseAllCommand = "All";
+	private String collapseRefCommand = "Reference";
+	private String collapseNoneCommand = "None";
+	private String refTopCommand = "Top";
+	private String refBotCommand = "Bottom";
+	private String colourBaseCommand = "By Base Qual";
+	private String colourReadCommand = "By Read Qual";
 
+	private JMenu collapseSubmenu;
+	private JMenu referenceSubMenu;
+	private JMenu colourSubMenu;
+	private JRadioButtonMenuItem collapseAllButton;
+	private JRadioButtonMenuItem collapseRefButton;
+	private JRadioButtonMenuItem collapseNoneButton;
+	private JRadioButtonMenuItem refTopButton;
+	private JRadioButtonMenuItem refBotButton;
+	private JRadioButtonMenuItem colourBaseButton;
+	private JRadioButtonMenuItem colourReadButton;
+	
+	
 	public static void main(String[] args) {
 		new SnugViewer();
 	}
@@ -146,21 +163,63 @@ public class SnugViewer extends JFrame implements ActionListener, ComponentListe
 		mb.add(fileMenu);
 
 		viewMenu = new JMenu("View");
-		collapseViewCB = new JCheckBoxMenuItem(collapseViewCommand);
-		collapseViewCB.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_C, menumask));
-		collapseViewCB.addActionListener(this);
-		collapseViewCB.setEnabled(false);
-		viewMenu.add(collapseViewCB);
-		referenceOnTopCB = new JCheckBoxMenuItem(referenceOnTopCommand);
-		referenceOnTopCB.addActionListener(this);
-		referenceOnTopCB.setEnabled(false);
-		viewMenu.add(referenceOnTopCB);
-		hideRefBasesCB = new JCheckBoxMenuItem(hideRefBasesCommand);
-		hideRefBasesCB.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_H, menumask));
-		hideRefBasesCB.addActionListener(this);
-		hideRefBasesCB.setEnabled(false);
-		viewMenu.add(hideRefBasesCB);
 
+		collapseSubmenu = new JMenu("Collapse");
+		
+		ButtonGroup collapseGroup = new ButtonGroup();
+		
+		collapseAllButton = new JRadioButtonMenuItem(collapseAllCommand);
+		collapseAllButton.addActionListener(this);
+		collapseGroup.add(collapseAllButton);
+		collapseSubmenu.add(collapseAllButton);
+		
+		collapseRefButton = new JRadioButtonMenuItem(collapseRefCommand);
+		collapseRefButton.addActionListener(this);
+		collapseGroup.add(collapseRefButton);
+		collapseSubmenu.add(collapseRefButton);
+		
+		collapseNoneButton = new JRadioButtonMenuItem(collapseNoneCommand);
+		collapseNoneButton.addActionListener(this);
+		collapseGroup.add(collapseNoneButton);
+		collapseSubmenu.add(collapseNoneButton);
+		
+		viewMenu.add(collapseSubmenu);		
+		viewMenu.addSeparator();
+		
+		referenceSubMenu = new JMenu("Reference");
+		
+		ButtonGroup referenceGroup = new ButtonGroup();
+		
+		refTopButton = new JRadioButtonMenuItem(refTopCommand);
+		refTopButton.addActionListener(this);
+		referenceGroup.add(refTopButton);
+		referenceSubMenu.add(refTopButton);
+		
+		refBotButton = new JRadioButtonMenuItem(refBotCommand);
+		refBotButton.addActionListener(this);
+		referenceGroup.add(refBotButton);
+		referenceSubMenu.add(refBotButton);
+		
+		viewMenu.add(referenceSubMenu);
+		viewMenu.addSeparator();
+
+		colourSubMenu = new JMenu("Colour");
+		
+		ButtonGroup colourGroup = new ButtonGroup();
+		
+		colourBaseButton = new JRadioButtonMenuItem(colourBaseCommand);
+		colourBaseButton.addActionListener(this);
+		colourGroup.add(colourBaseButton);
+		colourSubMenu.add(colourBaseButton);
+		
+		colourReadButton = new JRadioButtonMenuItem(colourReadCommand);
+		colourReadButton.addActionListener(this);
+		colourGroup.add(colourReadButton);
+		colourSubMenu.add(colourReadButton);
+		
+		viewMenu.add(colourSubMenu);
+		viewMenu.addSeparator();
+			
 		mb.add(viewMenu);
 
 		if (!(System.getProperty("os.name").toLowerCase().contains("mac"))) {
@@ -301,13 +360,9 @@ public class SnugViewer extends JFrame implements ActionListener, ComponentListe
 				// TODO Auto-generated catch block
 				e.printStackTrace();
 			}
-		} else if (command.equals(collapseViewCommand)) {
-
-			if (collapseViewCB.isSelected()) {
-				collapseView = true;
-			} else {
-				collapseView = false;
-			}
+		} else if (command.equals(collapseAllCommand)) {
+			collapseView = true;
+			hideRefBases = false;
 			if (displayVariantIndex != null) {
 				try {
 					drawReads();
@@ -319,12 +374,9 @@ public class SnugViewer extends JFrame implements ActionListener, ComponentListe
 					e.printStackTrace();
 				}
 			}
-		} else if (command.equals(referenceOnTopCommand)) {
-			if (referenceOnTopCB.isSelected()) {
-				refernceOnTop = true;
-			} else {
-				refernceOnTop = false;
-			}
+		} else if (command.equals(collapseRefCommand)) {
+			hideRefBases = true;
+			collapseView = false;
 			if (displayVariantIndex != null) {
 				try {
 					drawReads();
@@ -336,12 +388,10 @@ public class SnugViewer extends JFrame implements ActionListener, ComponentListe
 					e.printStackTrace();
 				}
 			}
-		} else if (command.equals(hideRefBasesCommand)) {
-			if (hideRefBasesCB.isSelected()) {
-				hideRefBases = true;
-			} else {
-				hideRefBases = false;
-			}
+			
+		} else if (command.equals(collapseNoneCommand)) {
+			hideRefBases = false;
+			collapseView = false;
 			if (displayVariantIndex != null) {
 				try {
 					drawReads();
@@ -353,6 +403,63 @@ public class SnugViewer extends JFrame implements ActionListener, ComponentListe
 					e.printStackTrace();
 				}
 			}
+			
+		} else if (command.equals(refTopCommand)) {
+			refernceOnTop = true;
+			if (displayVariantIndex != null) {
+				try {
+					drawReads();
+				} catch (JSchException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				} catch (IOException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				}
+			}
+			
+		} else if (command.equals(refBotCommand)) {
+			refernceOnTop = false;
+			if (displayVariantIndex != null) {
+				try {
+					drawReads();
+				} catch (JSchException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				} catch (IOException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				}
+			}
+			
+		} else if (command.equals(colourBaseCommand)) {
+			mappingQuality = false;
+			if (displayVariantIndex != null) {
+				try {
+					drawReads();
+				} catch (JSchException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				} catch (IOException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				}
+			}
+			
+		} else if (command.equals(colourReadCommand)) {
+			mappingQuality = true;
+			if (displayVariantIndex != null) {
+				try {
+					drawReads();
+				} catch (JSchException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				} catch (IOException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				}
+			}
+			
 		}
 		
 		else if (command.equals(openFilesCommand)) {
@@ -807,7 +914,7 @@ public class SnugViewer extends JFrame implements ActionListener, ComponentListe
 
 	private void generateAlignmentPanel(int pixPerBase2, int offset, ArrayList<SAMRecord> reads, Variant v, int height, int width, BoundedRangeModel model) {
 		if (reads.size() > 0) {
-			AlignmentPanel ap = new AlignmentPanel(pixPerBase, offset, reads, v, referenceFile, collapseView, hideRefBases);
+			AlignmentPanel ap = new AlignmentPanel(pixPerBase, offset, reads, v, referenceFile, collapseView, hideRefBases, mappingQuality);
 			ap.setPreferredSize(new Dimension(width, height));
 			setBackground(Color.white);
 			ap.setBorder(BorderFactory.createLineBorder(Color.black));
@@ -847,9 +954,7 @@ public class SnugViewer extends JFrame implements ActionListener, ComponentListe
 			noButton.setEnabled(true);
 			maybeButton.setEnabled(true);
 			scorePanel.setEnabled(true);
-			collapseViewCB.setEnabled(true);
-			referenceOnTopCB.setEnabled(true);
-			hideRefBasesCB.setEnabled(true);
+			viewMenu.setEnabled(true);
 			if (currentVariantIndex == 0 || displayVariantIndex == 0) {
 				backButton.setEnabled(false);
 			} else {
@@ -861,9 +966,7 @@ public class SnugViewer extends JFrame implements ActionListener, ComponentListe
 			maybeButton.setEnabled(false);
 			backButton.setEnabled(false);
 			scorePanel.setEnabled(false);
-			collapseViewCB.setEnabled(false);
-			referenceOnTopCB.setEnabled(false);
-			hideRefBasesCB.setEnabled(false);
+			viewMenu.setEnabled(false);
 		}
 	}
 
