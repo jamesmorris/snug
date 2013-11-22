@@ -33,10 +33,32 @@ public class AlignmentPanel extends JPanel {
 	// interface options
 	private boolean collapse;
 	private boolean hide;
-	
+	private boolean mappingQuality;
+
+	private Color vlightgrey = new Color(160, 160, 160);
+	private Color lightgrey = new Color(192, 192, 192);
+	private Color medgrey = new Color(224, 224, 224);
+	private Color grey = Color.gray;
+	private Color vlightgreen = new Color(204, 255, 204);
+	private Color lightgreen = new Color(102, 255, 102);
+	private Color medgreen = new Color(51, 255, 51);
+	private Color green = Color.green;
+	private Color vlightred = new Color(255, 204, 204);
+	private Color lightred = new Color(255, 102, 102);
+	private Color medred = new Color(255, 51, 51);
+	private Color red = Color.red;
+	private Color vlightorange = new Color(255, 229, 204);
+	private Color lightorange = new Color(255, 204, 153);
+	private Color medorange = new Color(255, 178, 102);
+	private Color orange = new Color(255, 128, 0);
+	private Color vlightblue = new Color(204, 229, 255);
+	private Color lightblue = new Color(153, 204, 255);
+	private Color medblue = new Color(102, 178, 255);
+	private Color blue = Color.blue;
+
 	ArrayList<BasePosition> baseCounts;
 
-	public AlignmentPanel(int pixPerBase, int offset, ArrayList<SAMRecord> reads, Variant v, IndexedFastaSequenceFile ref, boolean collapse, boolean hide) {
+	public AlignmentPanel(int pixPerBase, int offset, ArrayList<SAMRecord> reads, Variant v, IndexedFastaSequenceFile ref, boolean collapse, boolean hide, boolean mappingQuality) {
 		super();
 		this.pixPerBase = pixPerBase;
 		this.offset = offset;
@@ -45,6 +67,7 @@ public class AlignmentPanel extends JPanel {
 		this.reference = ref;
 		this.collapse = collapse;
 		this.hide = hide;
+		this.mappingQuality = mappingQuality;
 
 		ToolTipManager.sharedInstance().registerComponent(this);
 		ToolTipManager.sharedInstance().setDismissDelay(10000);
@@ -61,168 +84,28 @@ public class AlignmentPanel extends JPanel {
 		super.paintComponent(g);
 		Graphics2D g2 = (Graphics2D) g;
 		if (collapse) {
-			drawCollapsedAlignment(g2);
+			drawAlignment(g2, 5);
 		} else if (hide) {
-			drawHiddenAlignment(g2);
+			drawAlignment(g2, 15);
 		} else {
-			drawAlignment(g2);
+			drawAlignment(g2, 15);
 		}
+
 	}
 
-	private void drawHiddenAlignment(Graphics2D g2) {
+	private void drawAlignment(Graphics2D g2, int lineSpace) {
 		if (reads != null) {
-			int ypos = 15;
-
+			int ypos = lineSpace;
 			baseCounts = new ArrayList<BasePosition>();
-
-			g2.setColor(Color.black);
-			for (SAMRecord read : reads) {
-				drawHiddenSequence(g2, read, ypos, offset);
-				ypos += 15;
-			}
-			// draw lines before and after to show the position of the variant
-			g2.drawLine(offset - 2, 0, offset - 2, this.getHeight());
-			g2.drawLine(offset + (pixPerBase - 2), 0, offset + (pixPerBase - 2), this.getHeight());
-		}
-		
-	}
-
-	private void drawHiddenSequence(Graphics2D g2, SAMRecord samRecord, int ypos, int offset2) {
-		int xpos = 0;
-		int basePosition;
-		final String readSeq = samRecord.getReadString();
-
-		byte[] baseQualityScores = samRecord.getBaseQualities();
-		
-		// set the line width
-		g2.setStroke(new BasicStroke(2));
-
-		List<AlignmentBlock> blocks = samRecord.getAlignmentBlocks();
-
-		for (int i = 0; i < blocks.size(); i++) {
-
-			AlignmentBlock block = blocks.get(i);
-			int blockStart = block.getReadStart();
-			int distance2Variant = block.getReferenceStart() - variant.getPos();
-			for (int j = 0; j < block.getLength(); j++) {
-
-				int readPos = blockStart - 1 + j;
-				int currentPosition = ((distance2Variant + j) + variant.getPos());
-				ReferenceSequence refSeq = reference.getSubsequenceAt(variant.getChr(), currentPosition, currentPosition);
-				byte[] bases = refSeq.getBases();
-				String refBase = String.valueOf((char) bases[0]);
-				String readBase = readSeq.substring(readPos, readPos + 1);
-				basePosition = (distance2Variant + j) * pixPerBase;
-				xpos = offset + basePosition;
-
-				// check read base against reference base - colour if different
-				if (readBase.matches(refBase)) {
-					refBaseQualityColour(g2, baseQualityScores[readPos]);
-					g2.drawLine(xpos, ypos, xpos + pixPerBase, ypos);
-				} else {
-					altBaseQualityColour(g2, readBase, baseQualityScores[readPos]);
-					g2.drawString(readBase, xpos, ypos);
-				}
-
-				// update the base counts for the current position
-				int position = xpos / pixPerBase;
-
-				try {
-					// try to increment the base count
-					baseCounts.get(position).addBase(readBase);
-				} catch (IndexOutOfBoundsException e) {
-					baseCounts.add(position, new BasePosition());
-					baseCounts.get(position).addBase(readBase);
-				}
-			}
-		}
-		
-	}
-
-	private void drawAlignment(Graphics2D g2) {
-		if (reads != null) {
-			int ypos = 15;
-
-			baseCounts = new ArrayList<BasePosition>();
-
 			g2.setColor(Color.black);
 			for (SAMRecord read : reads) {
 				drawSequence(g2, read, ypos, offset);
-				ypos += 15;
+				ypos += lineSpace;
 			}
 			// draw lines before and after to show the position of the variant
 			g2.drawLine(offset - 2, 0, offset - 2, this.getHeight());
 			g2.drawLine(offset + (pixPerBase - 2), 0, offset + (pixPerBase - 2), this.getHeight());
 		}
-	}
-
-	private void drawCollapsedAlignment(Graphics2D g2) {
-		if (reads != null) {
-			int ypos = 5;
-
-			baseCounts = new ArrayList<BasePosition>();
-
-			g2.setColor(Color.black);
-			for (SAMRecord read : reads) {
-				drawCollapsedSequence(g2, read, ypos, offset);
-				ypos += 5;
-			}
-			// draw lines before and after to show the position of the variant
-			g2.drawLine(offset - 2, 0, offset - 2, this.getHeight());
-			g2.drawLine(offset + (pixPerBase - 2), 0, offset + (pixPerBase - 2), this.getHeight());
-		}
-	}
-
-	private void drawCollapsedSequence(Graphics2D g2, SAMRecord samRecord, int ypos, int offset2) {
-
-		int xpos = 0;
-		int basePosition;
-		final String readSeq = samRecord.getReadString();
-
-		byte[] baseQualityScores = samRecord.getBaseQualities();
-		
-		// set the line width
-		g2.setStroke(new BasicStroke(2));
-
-		List<AlignmentBlock> blocks = samRecord.getAlignmentBlocks();
-
-		for (int i = 0; i < blocks.size(); i++) {
-
-			AlignmentBlock block = blocks.get(i);
-			int blockStart = block.getReadStart();
-			int distance2Variant = block.getReferenceStart() - variant.getPos();
-			for (int j = 0; j < block.getLength(); j++) {
-
-				int readPos = blockStart - 1 + j;
-				int currentPosition = ((distance2Variant + j) + variant.getPos());
-				ReferenceSequence refSeq = reference.getSubsequenceAt(variant.getChr(), currentPosition, currentPosition);
-				byte[] bases = refSeq.getBases();
-				String refBase = String.valueOf((char) bases[0]);
-				String readBase = readSeq.substring(readPos, readPos + 1);
-				basePosition = (distance2Variant + j) * pixPerBase;
-				xpos = offset + basePosition;
-
-				// check read base against reference base - colour if different
-				if (readBase.matches(refBase)) {
-					refBaseQualityColour(g2, baseQualityScores[readPos]);
-				} else {
-					altBaseQualityColour(g2, readBase, baseQualityScores[readPos]);
-				}
-
-				// update the base counts for the current position
-				int position = xpos / pixPerBase;
-
-				try {
-					// try to increment the base count
-					baseCounts.get(position).addBase(readBase);
-				} catch (IndexOutOfBoundsException e) {
-					baseCounts.add(position, new BasePosition());
-					baseCounts.get(position).addBase(readBase);
-				}
-				g2.drawLine(xpos, ypos, xpos + pixPerBase, ypos);
-			}
-		}
-
 	}
 
 	private void drawSequence(final Graphics2D g2, final SAMRecord samRecord, int ypos, int offset) {
@@ -234,6 +117,7 @@ public class AlignmentPanel extends JPanel {
 		FontMetrics fm = g2.getFontMetrics();
 
 		byte[] baseQualityScores = samRecord.getBaseQualities();
+		int mappingQualityScore = samRecord.getMappingQuality();
 
 		List<AlignmentBlock> blocks = samRecord.getAlignmentBlocks();
 
@@ -246,7 +130,13 @@ public class AlignmentPanel extends JPanel {
 			basePosition = distance2Variant * pixPerBase;
 			xpos = (offset + basePosition) - ((int) fm.getStringBounds("< < <", g2).getWidth() + 5);
 			g2.setColor(Color.gray);
-			g2.drawString("< < <", xpos, ypos);
+			if (collapse) {
+				//
+			} else if (hide) {
+				//
+			} else {
+				g2.drawString("< < <", xpos, ypos);
+			}
 		}
 
 		for (int i = 0; i < blocks.size(); i++) {
@@ -267,53 +157,78 @@ public class AlignmentPanel extends JPanel {
 
 				// check read base against reference base - colour if different
 				if (readBase.matches(refBase)) {
-					refBaseQualityColour(g2, baseQualityScores[readPos]);
+
+					if (mappingQuality) {
+						refMappingQualityColour(g2, mappingQualityScore);
+					} else {
+						refBaseQualityColour(g2, baseQualityScores[readPos]);
+					}
+
+					if (collapse || hide) {
+						g2.drawLine(xpos, ypos, xpos + pixPerBase, ypos);
+					} else {
+						g2.drawString(readBase, xpos, ypos);
+					}
 				} else {
-					altBaseQualityColour(g2, readBase, baseQualityScores[readPos]);
+
+					if (mappingQuality) {
+						altMappingQualityColour(g2, readBase, mappingQualityScore);
+					} else {
+						altBaseQualityColour(g2, readBase, baseQualityScores[readPos]);
+					}
+					if (collapse) {
+						g2.drawLine(xpos, ypos, xpos + pixPerBase, ypos);
+					} else {
+						g2.drawString(readBase, xpos, ypos);
+					}
 				}
-				
+
 				// update the base counts for the current position
 				int position = xpos / pixPerBase;
 				try {
-					// try to increment the base count
-					baseCounts.get(position).addBase(readBase);
+					// try to increment the base count					
+					if (strand) {
+						baseCounts.get(position).addBase("-" + readBase);
+					} else {
+						baseCounts.get(position).addBase("+" + readBase);
+					}
 				} catch (IndexOutOfBoundsException e) {
 					baseCounts.add(position, new BasePosition());
-					baseCounts.get(position).addBase(readBase);
+					if (strand) {
+						baseCounts.get(position).addBase("-" + readBase);
+					} else {
+						baseCounts.get(position).addBase("+" + readBase);
+					}
 				}
-				g2.drawString(readBase, xpos, ypos);
-
 			}
 		}
 
 		// print the strand direction
 		if (!strand) {
 			g2.setColor(Color.gray);
-			g2.drawString("> > >", xpos + pixPerBase, ypos);
+			if (collapse) {
+				//
+			} else if (hide) {
+				//
+			} else {
+				g2.drawString("> > >", xpos + pixPerBase, ypos);
+			}
 		}
 
 	}
 
-	private void baseColour(Graphics2D g2, String base) {
-		if (base.equals("A")) {
-			g2.setColor(Color.green);
-		} else if (base.equals("T")) {
-			g2.setColor(Color.red);
-		} else if (base.equals("C")) {
-			g2.setColor(Color.blue);
-		} else if (base.equals("G")) {
-			g2.setColor(Color.orange);
-		} else {
-			g2.setColor(Color.black);
-		}
+	private void refMappingQualityColour(Graphics2D g2, int mappingQualityScore) {
+		if (mappingQualityScore < 10)
+			g2.setColor(vlightgrey);
+		else if (mappingQualityScore < 20)
+			g2.setColor(lightgrey);
+		else if (mappingQualityScore < 30)
+			g2.setColor(medgrey);
+		else
+			g2.setColor(grey);
 	}
-	
+
 	private void refBaseQualityColour(Graphics2D g2, byte baseQuality) {
-		Color vlightgrey = new Color(160, 160, 160);
-		Color lightgrey = new Color(192, 192, 192);
-		Color medgrey = new Color(224, 224, 224);
-		Color grey = Color.gray;
-		
 		if (baseQuality < 10)
 			g2.setColor(vlightgrey);
 		else if (baseQuality < 20)
@@ -323,83 +238,110 @@ public class AlignmentPanel extends JPanel {
 		else
 			g2.setColor(grey);
 	}
-	
-	private void altBaseQualityColour(Graphics2D g2, String base, byte baseQuality) {
-		if (base.equals("A")) {			
-			setAColourByBaseQuality(g2, baseQuality);
-		} else if (base.equals("T")) {
-			setTColourByBaseQuality(g2, baseQuality);
-		} else if (base.equals("C")) {
-			setCColourByBaseQuality(g2, baseQuality);
-		} else if (base.equals("G")) {
-			setGColourByBaseQuality(g2, baseQuality);
+
+	private void altMappingQualityColour(Graphics2D g2, String base, int mappingQualityScore) {
+		
+		if (mappingQualityScore < 10){
+			if (base.equals("A")) {			
+				g2.setColor(vlightgreen);
+			} else if (base.equals("T")) {
+				g2.setColor(vlightred);
+			} else if (base.equals("C")) {
+				g2.setColor(vlightblue);
+			} else if (base.equals("G")) {
+				g2.setColor(vlightorange);
+			} else {
+				g2.setColor(Color.black);
+			}
+		} else if (mappingQualityScore < 20) {
+			if (base.equals("A")) {			
+				g2.setColor(lightgreen);
+			} else if (base.equals("T")) {
+				g2.setColor(lightred);
+			} else if (base.equals("C")) {
+				g2.setColor(lightblue);
+			} else if (base.equals("G")) {
+				g2.setColor(lightorange);
+			} else {
+				g2.setColor(Color.black);
+			}
+		} else if (mappingQualityScore < 30) {
+			if (base.equals("A")) {			
+				g2.setColor(medgreen);
+			} else if (base.equals("T")) {
+				g2.setColor(medred);
+			} else if (base.equals("C")) {
+				g2.setColor(medblue);
+			} else if (base.equals("G")) {
+				g2.setColor(medorange);
+			} else {
+				g2.setColor(Color.black);
+			}
 		} else {
-			g2.setColor(Color.black);
+			if (base.equals("A")) {			
+				g2.setColor(green);
+			} else if (base.equals("T")) {
+				g2.setColor(red);
+			} else if (base.equals("C")) {
+				g2.setColor(blue);
+			} else if (base.equals("G")) {
+				g2.setColor(orange);
+			} else {
+				g2.setColor(Color.black);
+			}
 		}
 	}
-	
-	private void setAColourByBaseQuality(Graphics2D g2, byte baseQuality) {
-		Color vlightgreen = new Color(204, 255, 204);
-		Color lightgreen = new Color(102, 255, 102);
-		Color medgreen = new Color(51, 255, 51);
-		Color green = Color.green;
-		
-		if (baseQuality < 10)
-			g2.setColor(vlightgreen);
-		else if (baseQuality < 20)
-			g2.setColor(lightgreen);
-		else if (baseQuality < 30)
-			g2.setColor(medgreen);
-		else
-			g2.setColor(green);
-	}
 
-	private void setTColourByBaseQuality(Graphics2D g2, byte baseQuality) {
-		Color vlightred = new Color(255, 204, 204);
-		Color lightred = new Color(255, 102, 102);
-		Color medred = new Color(255, 51, 51);
-		Color red = Color.red;
-		
-		if (baseQuality < 10)
-			g2.setColor(vlightred);
-		else if (baseQuality < 20)
-			g2.setColor(lightred);
-		else if (baseQuality < 30)
-			g2.setColor(medred);
-		else
-			g2.setColor(red);
-	}
-
-	private void setGColourByBaseQuality(Graphics2D g2, byte baseQuality) {
-		Color vlightorange = new Color(255, 229, 204);
-		Color lightorange = new Color(255, 204, 153);
-		Color medorange = new Color(255, 178, 102);
-		Color orange = new Color(255, 128, 0);
-		
-		if (baseQuality < 10)
-			g2.setColor(vlightorange);
-		else if (baseQuality < 20)
-			g2.setColor(lightorange);
-		else if (baseQuality < 30)
-			g2.setColor(medorange);
-		else
-			g2.setColor(orange);
-	}
-
-	private void setCColourByBaseQuality(Graphics2D g2, byte baseQuality) {
-		Color vlightblue = new Color(204, 229, 255);
-		Color lightblue = new Color(153, 204, 255);
-		Color medblue = new Color(102, 178, 255);
-		Color blue = Color.blue;
-		
-		if (baseQuality < 10)
-			g2.setColor(vlightblue);
-		else if (baseQuality < 20)
-			g2.setColor(lightblue);
-		else if (baseQuality < 30)
-			g2.setColor(medblue);
-		else
-			g2.setColor(blue);
+	private void altBaseQualityColour(Graphics2D g2, String base, byte baseQuality) {
+		if (baseQuality < 10){
+			if (base.equals("A")) {			
+				g2.setColor(vlightgreen);
+			} else if (base.equals("T")) {
+				g2.setColor(vlightred);
+			} else if (base.equals("C")) {
+				g2.setColor(vlightblue);
+			} else if (base.equals("G")) {
+				g2.setColor(vlightorange);
+			} else {
+				g2.setColor(Color.black);
+			}
+		} else if (baseQuality < 20) {
+			if (base.equals("A")) {			
+				g2.setColor(lightgreen);
+			} else if (base.equals("T")) {
+				g2.setColor(lightred);
+			} else if (base.equals("C")) {
+				g2.setColor(lightblue);
+			} else if (base.equals("G")) {
+				g2.setColor(lightorange);
+			} else {
+				g2.setColor(Color.black);
+			}
+		} else if (baseQuality < 30) {
+			if (base.equals("A")) {			
+				g2.setColor(medgreen);
+			} else if (base.equals("T")) {
+				g2.setColor(medred);
+			} else if (base.equals("C")) {
+				g2.setColor(medblue);
+			} else if (base.equals("G")) {
+				g2.setColor(medorange);
+			} else {
+				g2.setColor(Color.black);
+			}
+		} else {
+			if (base.equals("A")) {			
+				g2.setColor(green);
+			} else if (base.equals("T")) {
+				g2.setColor(red);
+			} else if (base.equals("C")) {
+				g2.setColor(blue);
+			} else if (base.equals("G")) {
+				g2.setColor(orange);
+			} else {
+				g2.setColor(Color.black);
+			}
+		}
 	}
 
 	public void setReads(ArrayList<SAMRecord> reads) {
@@ -417,8 +359,14 @@ public class AlignmentPanel extends JPanel {
 	}
 
 	private String getBaseCounts(int basePosition) {
-		BasePosition bp = baseCounts.get(basePosition);
-		return "A:" + bp.getA() + " T" + bp.getT() + " C:" + bp.getC() + " G:" + bp.getG();
+		BasePosition bp = baseCounts.get(basePosition);		
+		return "<html><table>" +
+		"<tr><td></td><td>+</td><td>-</td></tr>"+
+		"<tr><td>A</td><td>" + bp.getAplus() + "</td><td>" + bp.getAminus() + "</td></tr>"+
+		"<tr><td>T</td><td>" + bp.getTplus() + "</td><td>" + bp.getTminus() + "</td></tr>"+
+		"<tr><td>G</td><td>" + bp.getGplus() + "</td><td>" + bp.getGminus() + "</td></tr>"+
+		"<tr><td>C</td><td>" + bp.getCplus() + "</td><td>" + bp.getCminus() + "</td></tr>"+
+		"</table></html>";
 	}
 
 }
