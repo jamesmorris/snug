@@ -20,6 +20,11 @@ import javax.swing.JSplitPane;
 import javax.swing.JTextArea;
 import javax.swing.KeyStroke;
 import javax.swing.ScrollPaneConstants;
+
+import org.broadinstitute.variant.variantcontext.VariantContext;
+import org.broadinstitute.variant.vcf.VCFFileReader;
+import org.broadinstitute.variant.vcf.VCFHeader;
+
 import java.awt.Color;
 import java.awt.Component;
 import java.awt.Dimension;
@@ -50,6 +55,7 @@ import net.sf.samtools.SAMFileReader;
 import net.sf.samtools.SAMFormatException;
 import net.sf.samtools.SAMRecord;
 import net.sf.samtools.SAMRecordIterator;
+import net.sf.samtools.util.CloseableIterator;
 import net.sf.picard.reference.IndexedFastaSequenceFile;
 import com.jcraft.jsch.*;
 
@@ -61,7 +67,6 @@ public class SnugViewer extends JFrame implements ActionListener, ComponentListe
 	private static final long serialVersionUID = 1122484803356474269L;
 
 	private File output;
-	private ArrayList<Variant> variantList;
 	private int currentVariantIndex;
 	private Integer displayVariantIndex = null;
 	private HashMap<Variant, Integer> listScores = new HashMap<Variant, Integer>();
@@ -84,7 +89,7 @@ public class SnugViewer extends JFrame implements ActionListener, ComponentListe
 
 
 	//
-	// Global arrays
+	// Global
 	//
 	// for remote file access
 	private Session remoteSession;
@@ -95,11 +100,11 @@ public class SnugViewer extends JFrame implements ActionListener, ComponentListe
 	private ArrayList<String> bamNames;
 	// remoteBams - array containing just the bam paths
 	private ArrayList<String> remoteBams;
-
-	//
-	// Global variables
-	//
+	// list of all the variants to look through
+	private ArrayList<Variant> variantList;
+	
 	private boolean backSNP;
+	
 	private IndexedFastaSequenceFile referenceFile;
 	// set the space given to each base as it is drawn
 	private int pixPerBase = 15;
@@ -121,7 +126,6 @@ public class SnugViewer extends JFrame implements ActionListener, ComponentListe
 	private String backCommand = "Back";
 	private String openFilesCommand = "Load Files";
 	private String quitCommand = "Quit";
-	private String mappingQualityCommand = "Colour by mapping quality";
 	private String collapseAllCommand = "All";
 	private String collapseRefCommand = "Reference";
 	private String collapseNoneCommand = "None";
@@ -152,16 +156,74 @@ public class SnugViewer extends JFrame implements ActionListener, ComponentListe
 		dcd = new DataConnectionDialog(this);
 		mb = new JMenuBar();
 
-		int menumask = Toolkit.getDefaultToolkit().getMenuShortcutKeyMask();
+		generateFileMenu();
+		generateViewMenu();
+		mb.add(fileMenu);	
+		mb.add(viewMenu);
 
+		int menumask = Toolkit.getDefaultToolkit().getMenuShortcutKeyMask();
+		
+		if (!(System.getProperty("os.name").toLowerCase().contains("mac"))) {
+			JMenuItem quitItem = new JMenuItem("Quit");
+			quitItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_Q, menumask));
+			quitItem.addActionListener(this);
+			fileMenu.add(quitItem);
+		}
+
+		setJMenuBar(mb);
+
+		generateScorePanel();
+		
+		generateMessagePanel();
+
+		controlsPanel = new JPanel();
+		controlsPanel.add(scorePanel);
+		controlsPanel.add(messagePanel);
+		controlsPanel.setLayout(new BoxLayout(controlsPanel, BoxLayout.X_AXIS));
+		controlsPanel.setMaximumSize(new Dimension(900, 200));
+		controlsPanel.setVisible(false);
+		controlsPanel.setAlignmentX(Component.LEFT_ALIGNMENT);
+
+		trackContainer = new JPanel();
+		trackContainer.setBackground(Color.white);
+		trackContainer.setLayout(new BoxLayout(trackContainer, BoxLayout.Y_AXIS));
+		trackContainer.setBorder(BorderFactory.createEmptyBorder(0, 0, 10, 10));
+
+		nameContainer = new JPanel();
+		nameContainer.setBackground(Color.white);
+		nameContainer.setLayout(new BoxLayout(nameContainer, BoxLayout.Y_AXIS));
+		nameContainer.setBorder(BorderFactory.createEmptyBorder(0, 10, 10, 0));
+
+		JSplitPane mainPanel = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, nameContainer, trackContainer);
+		mainPanel.setOneTouchExpandable(true);
+		mainPanel.setDividerLocation(100);
+		mainPanel.setAlignmentX(Component.LEFT_ALIGNMENT);
+
+		contentPanel = new JPanel();
+		contentPanel.setPreferredSize(new Dimension(900, 600));
+		contentPanel.setLayout(new BoxLayout(contentPanel, BoxLayout.Y_AXIS));
+		contentPanel.add(mainPanel);
+		contentPanel.add(controlsPanel);
+		contentPanel.addComponentListener(this);
+
+		this.setContentPane(contentPanel);
+		this.pack();
+		this.setVisible(true);
+
+	}
+
+	private void generateFileMenu() {
+		
+		int menumask = Toolkit.getDefaultToolkit().getMenuShortcutKeyMask();
+		
 		fileMenu = new JMenu("File");
 		JMenuItem loadFiles = new JMenuItem(openFilesCommand);
-		loadFiles.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_B, menumask));
+		loadFiles.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_O, menumask));
 		loadFiles.addActionListener(this);
 		fileMenu.add(loadFiles);
+	}
 
-		mb.add(fileMenu);
-
+	private void generateViewMenu() {
 		viewMenu = new JMenu("View");
 
 		collapseSubmenu = new JMenu("Collapse");
@@ -219,18 +281,15 @@ public class SnugViewer extends JFrame implements ActionListener, ComponentListe
 		
 		viewMenu.add(colourSubMenu);
 		viewMenu.addSeparator();
-			
-		mb.add(viewMenu);
+	}
 
-		if (!(System.getProperty("os.name").toLowerCase().contains("mac"))) {
-			JMenuItem quitItem = new JMenuItem("Quit");
-			quitItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_Q, menumask));
-			quitItem.addActionListener(this);
-			fileMenu.add(quitItem);
-		}
+	private void generateMessagePanel() {
+		messageText = new JTextArea(4, 40);
+		messageText.setEditable(false);
+		messagePanel = new JScrollPane(messageText);
+	}
 
-		setJMenuBar(mb);
-
+	private void generateScorePanel() {
 		yesButton = new JButton(yesCommand);
 		yesButton.addActionListener(this);
 		yesButton.setEnabled(false);
@@ -246,7 +305,7 @@ public class SnugViewer extends JFrame implements ActionListener, ComponentListe
 		backButton = new JButton(backCommand);
 		backButton.addActionListener(this);
 		backButton.setEnabled(false);
-
+		
 		scorePanel = new JPanel();
 		scorePanel.add(new JLabel("Approve?"));
 		scorePanel.add(yesButton);
@@ -257,45 +316,6 @@ public class SnugViewer extends JFrame implements ActionListener, ComponentListe
 		scorePanel.registerKeyboardAction(this, maybeCommand, KeyStroke.getKeyStroke(KeyEvent.VK_M, 0), JComponent.WHEN_ANCESTOR_OF_FOCUSED_COMPONENT);
 		scorePanel.add(backButton);
 		scorePanel.registerKeyboardAction(this, backCommand, KeyStroke.getKeyStroke(KeyEvent.VK_B, 0), JComponent.WHEN_ANCESTOR_OF_FOCUSED_COMPONENT);
-
-		messageText = new JTextArea(4, 40);
-		messageText.setEditable(false);
-		messagePanel = new JScrollPane(messageText);
-
-		controlsPanel = new JPanel();
-		controlsPanel.add(scorePanel);
-		controlsPanel.add(messagePanel);
-		controlsPanel.setLayout(new BoxLayout(controlsPanel, BoxLayout.X_AXIS));
-		controlsPanel.setMaximumSize(new Dimension(900, 200));
-		controlsPanel.setVisible(false);
-		controlsPanel.setAlignmentX(Component.LEFT_ALIGNMENT);
-
-		trackContainer = new JPanel();
-		trackContainer.setBackground(Color.white);
-		trackContainer.setLayout(new BoxLayout(trackContainer, BoxLayout.Y_AXIS));
-		trackContainer.setBorder(BorderFactory.createEmptyBorder(0, 0, 10, 10));
-
-		nameContainer = new JPanel();
-		nameContainer.setBackground(Color.white);
-		nameContainer.setLayout(new BoxLayout(nameContainer, BoxLayout.Y_AXIS));
-		nameContainer.setBorder(BorderFactory.createEmptyBorder(0, 10, 10, 0));
-
-		JSplitPane mainPanel = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, nameContainer, trackContainer);
-		mainPanel.setOneTouchExpandable(true);
-		mainPanel.setDividerLocation(100);
-		mainPanel.setAlignmentX(Component.LEFT_ALIGNMENT);
-
-		contentPanel = new JPanel();
-		contentPanel.setPreferredSize(new Dimension(900, 600));
-		contentPanel.setLayout(new BoxLayout(contentPanel, BoxLayout.Y_AXIS));
-		contentPanel.add(mainPanel);
-		contentPanel.add(controlsPanel);
-		contentPanel.addComponentListener(this);
-
-		this.setContentPane(contentPanel);
-		this.pack();
-		this.setVisible(true);
-
 	}
 
 	public void actionPerformed(ActionEvent actionEvent) {
@@ -477,9 +497,8 @@ public class SnugViewer extends JFrame implements ActionListener, ComponentListe
 				bamNames = new ArrayList<String>();
 
 				remoteSession = null;
-				// if any of the files have been selected to come from a remote
-				// source then create a jsch session
-				if (dcd.remoteBam() | dcd.remoteRef() | dcd.remoteVar()) {
+				// if the files have been selected to come from a remote source then create a jsch session
+				if (dcd.remoteBam()) {
 					if (dcd.getHost().equals("")) {
 						JOptionPane.showMessageDialog(null, "Loading files failed: Host name missing, please try again", "Error", JOptionPane.ERROR_MESSAGE);
 						return;
@@ -693,21 +712,56 @@ public class SnugViewer extends JFrame implements ActionListener, ComponentListe
 	}
 
 	private boolean openVariants(String var) {
-		VariantListFile variantListFile = null;
-		try {
-			variantListFile = new VariantListFile(var);
-		} catch (IOException e) {
-			JOptionPane.showMessageDialog(null, "Unable to open the selected variants file:\n" + e.toString(), "Error", JOptionPane.ERROR_MESSAGE);
-			return false;
-		} catch (NumberFormatException e) {
-			JOptionPane.showMessageDialog(null, "Position value in variants file is not a number", "Error", JOptionPane.ERROR_MESSAGE);
-			return false;
-		} catch (UnrecognisedVariantFileFormat e) {
-			JOptionPane.showMessageDialog(null, "Unrecognised variant file format: " + e.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
-			return false;
+		
+		// if we belive that we have a vcf file of variants then use the picard VCFFileReader class
+		// this class can open vcf or bcf files
+		// it also can be queried when we need to pull out a region of the vcf		
+		if (var.toLowerCase().endsWith(".vcf.gz") || 
+				var.toLowerCase().endsWith(".vcf") || 
+				var.toLowerCase().endsWith(".bcf.gz") || 
+				var.toLowerCase().endsWith(".bcf")) 
+		{
+			VCFFileReader vcfFileReader = new VCFFileReader(new File(var));	
+			
+			
+			// get a list of all the samples in the vcf
+			VCFHeader vcfHeader = vcfFileReader.getFileHeader();
+			
+			ArrayList<String> sampleNamesInOrder = vcfHeader.getSampleNamesInOrder();
+			
+			System.out.println(sampleNamesInOrder.toString());
+			
+			CloseableIterator<VariantContext> vcfFileIterator = vcfFileReader.iterator();
+			
+			variantList = new ArrayList<Variant>();
+			
+			while (vcfFileIterator.hasNext()) {
+				VariantContext vc = vcfFileIterator.next();
+				variantList.add(new Variant(vc.getChr(), vc.getStart()));
+			}
+			
+			
+			
+			
+			
+		} else {
+			// variants in simple delimited file format
+			VariantListFile variantListFile = null;
+			try {
+				variantListFile = new VariantListFile(var);
+			} catch (IOException e) {
+				JOptionPane.showMessageDialog(null, "Unable to open the selected variants file:\n" + e.toString(), "Error", JOptionPane.ERROR_MESSAGE);
+				return false;
+			} catch (NumberFormatException e) {
+				JOptionPane.showMessageDialog(null, "Position value in variants file is not a number", "Error", JOptionPane.ERROR_MESSAGE);
+				return false;
+			} catch (UnrecognisedVariantFileFormat e) {
+				JOptionPane.showMessageDialog(null, "Unrecognised variant file format: " + e.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
+				return false;
+			}
+			variantList = variantListFile.getVariants();
 		}
-
-		variantList = variantListFile.getVariants();
+		
 		printMessage(variantList.size() + " variants loaded from: '" + var + "'");
 		output = checkOverwriteFile(new File(var + ".scores"));
 
