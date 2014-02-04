@@ -480,9 +480,7 @@ public class SnugViewer extends JFrame implements ActionListener, ComponentListe
 				}
 			}
 			
-		}
-		
-		else if (command.equals(openFilesCommand)) {
+		} else if (command.equals(openFilesCommand)) {
 			dcd.pack();
 			dcd.setVisible(true);
 
@@ -527,12 +525,19 @@ public class SnugViewer extends JFrame implements ActionListener, ComponentListe
 					} else {
 						bamSuccess = openBam(dcd.getBam());
 					}
-				} else {
+				} else if (dcd.multipleBam()) {
 					if (dcd.getBamList().equals("")) {
 						JOptionPane.showMessageDialog(null, "Loading files failed: BAM list field empty, please try again", "Error", JOptionPane.ERROR_MESSAGE);
 						return;
 					} else {
 						bamSuccess = openBamList(dcd.getBamList());
+					}
+				} else {
+					if (dcd.getVCFBamPath().equals("")) {
+						JOptionPane.showMessageDialog(null, "Loading files failed: BAM list field empty, please try again", "Error", JOptionPane.ERROR_MESSAGE);
+						return;
+					} else {
+						bamSuccess = openBamsFromVCF(dcd.getBamList());
 					}
 				}
 
@@ -578,6 +583,20 @@ public class SnugViewer extends JFrame implements ActionListener, ComponentListe
 		}
 	}
 
+	private boolean openBamsFromVCF(String bamList) {
+		// TODO Auto-generated method stub
+		
+		// here we need to check that the path provided is valid
+		// check that there is a valid bam file for each of the sample ids in the provided VCF
+		// including an index
+		
+		// we do not need to record all the paths to the bams as an array of sample ids plus the directory they are in is enough
+		
+		//printMessage("Loaded BAM: '" + bamName + "'");
+		
+		return false;
+	}
+
 	private boolean openBamList(String bamList) {
 
 		File bamFiles = new File(bamList);
@@ -600,7 +619,7 @@ public class SnugViewer extends JFrame implements ActionListener, ComponentListe
 				if (currentline == null || currentline.trim().equals("")) {
 					continue;
 				} else {
-
+					
 					// check if the line contains 1 or 2 columns
 					// the second column can contain a short name for the bam
 					String[] values = currentline.trim().split("\\t+");
