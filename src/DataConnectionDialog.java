@@ -6,6 +6,7 @@ import java.awt.event.ActionEvent;
 public class DataConnectionDialog extends JDialog implements ActionListener {
     private String bamFile;
     private String bamList;
+    private String bamVCFPath;
     private String varFile;
     private String refFile;
     private String host;
@@ -20,14 +21,8 @@ public class DataConnectionDialog extends JDialog implements ActionListener {
 	private JTextField portField;
 	private JTextField userField;
 	private JPasswordField pf;
-	JRadioButton bamLocalButton;
-	JRadioButton bamRemoteButton;
-	JRadioButton bamListLocalButton;
-	JRadioButton bamListRemoteButton;
-	JRadioButton varLocalButton;
-	JRadioButton varRemoteButton;
-	JRadioButton refLocalButton;
-	JRadioButton refRemoteButton;
+	JRadioButton localFilesButton;
+	JRadioButton remoteFilesButton;
 	JRadioButton singleButton;
     JRadioButton multipleButton;
 	private boolean filled;
@@ -36,7 +31,9 @@ public class DataConnectionDialog extends JDialog implements ActionListener {
     JButton bamListButton;
     JButton varButton;
     JButton refButton;
-
+	private JRadioButton vcfButton;
+	private JTextField vcfbamField;
+	
     public DataConnectionDialog(JFrame parent){
         super(parent,"Data Connection",true);
         filled = false;
@@ -56,22 +53,6 @@ public class DataConnectionDialog extends JDialog implements ActionListener {
         bamButton.addActionListener(this);
         bamPanel.add(bamButton);
         
-        bamLocalButton = new JRadioButton("Local path");        
-        bamLocalButton.setActionCommand("bamLocal");
-        bamLocalButton.addActionListener(this);
-        bamLocalButton.setSelected(true);
-        
-        bamRemoteButton = new JRadioButton("Remote path");
-        bamRemoteButton.setActionCommand("bamRemote");
-        bamRemoteButton.addActionListener(this);
-        
-        ButtonGroup bamFileSource = new ButtonGroup();
-        bamFileSource.add(bamLocalButton);
-        bamFileSource.add(bamRemoteButton);
-        
-        bamPanel.add(bamLocalButton);
-        bamPanel.add(bamRemoteButton);
-        
         contents.add(bamPanel);
         
         JPanel bamListPanel = new JPanel();
@@ -88,30 +69,46 @@ public class DataConnectionDialog extends JDialog implements ActionListener {
         bamListButton.setEnabled(false);
         bamListPanel.add(bamListButton);
         
-        bamListLocalButton = new JRadioButton("Local paths");        
-        bamListLocalButton.setActionCommand("bamListLocal");
-        bamListLocalButton.addActionListener(this);
-        bamListLocalButton.setEnabled(false);
-        bamListLocalButton.setSelected(true);
+        contents.add(bamListPanel);
         
-        bamListRemoteButton = new JRadioButton("Remote paths");
-        bamListRemoteButton.setActionCommand("bamListRemote");
-        bamListRemoteButton.addActionListener(this);
-        bamListRemoteButton.setEnabled(false);
+        JPanel bamSourcePanel = new JPanel();
+        
+        localFilesButton = new JRadioButton("Local file(s)");        
+        localFilesButton.setActionCommand("localFiles");
+        localFilesButton.addActionListener(this);
+        localFilesButton.setSelected(true);
+        
+        remoteFilesButton = new JRadioButton("Remote file(s)");
+        remoteFilesButton.setActionCommand("remoteFiles");
+        remoteFilesButton.addActionListener(this);
         
         ButtonGroup bamListSource = new ButtonGroup();
-        bamListSource.add(bamListLocalButton);
-        bamListSource.add(bamListRemoteButton);
+        bamListSource.add(localFilesButton);
+        bamListSource.add(remoteFilesButton);
         
-        bamListPanel.add(bamListLocalButton);
-        bamListPanel.add(bamListRemoteButton);
+        bamSourcePanel.add(localFilesButton);
+        bamSourcePanel.add(remoteFilesButton);
+        
+        contents.add(bamSourcePanel);
+        
+//        JPanel bamVCFPanel = new JPanel();
+//        vcfButton = new JRadioButton("");
+//        vcfButton.setActionCommand("vcfBam");
+//        vcfButton.addActionListener(this);
+//        bamVCFPanel.add(vcfButton);
+//        bamVCFPanel.add(new JLabel("Load BAMs From VCF: "));
+//        vcfbamField = new JTextField(20);
+//        vcfbamField.setEditable(false);
+//        bamVCFPanel.add(vcfbamField);
+//        
+//        contents.add(bamVCFPanel);
+        
+        // assume that the bams directory is remote this is quite a safe assumption because a directory containing 100s of sample bams will be very large
         
         ButtonGroup bamFileType = new ButtonGroup();
         bamFileType.add(singleButton);
         bamFileType.add(multipleButton);
-        
-        contents.add(bamListPanel);
-        
+//        bamFileType.add(vcfButton);
         
         JPanel varPanel = new JPanel();
         varPanel.add(new JLabel("Variants file: "));
@@ -120,26 +117,7 @@ public class DataConnectionDialog extends JDialog implements ActionListener {
         varButton = new JButton("Select Variants");
         varButton.addActionListener(this);
         varPanel.add(varButton);
-        
-        varLocalButton = new JRadioButton("Local");        
-        varLocalButton.setActionCommand("varLocal");
-        varLocalButton.addActionListener(this);
-        varLocalButton.setSelected(true);
-        varLocalButton.setVisible(false);
-        
-        varRemoteButton = new JRadioButton("Remote");
-        varRemoteButton.setActionCommand("varRemote");
-        varRemoteButton.addActionListener(this);
-        varRemoteButton.setEnabled(false);
-        varRemoteButton.setVisible(false);
-        
-        ButtonGroup varFileSource = new ButtonGroup();
-        varFileSource.add(varLocalButton);
-        varFileSource.add(varRemoteButton);
-        
-        varPanel.add(varLocalButton);
-        varPanel.add(varRemoteButton);
-      
+ 
         contents.add(varPanel);
         
         JPanel refPanel = new JPanel();
@@ -149,25 +127,6 @@ public class DataConnectionDialog extends JDialog implements ActionListener {
         refButton = new JButton("Select Reference");
         refButton.addActionListener(this);
         refPanel.add(refButton);
-        
-        refLocalButton = new JRadioButton("Local");        
-        refLocalButton.setActionCommand("refLocal");
-        refLocalButton.addActionListener(this);
-        refLocalButton.setSelected(true);
-        refLocalButton.setVisible(false);
-        
-        refRemoteButton = new JRadioButton("Remote");
-        refRemoteButton.setActionCommand("refRemote");
-        refRemoteButton.addActionListener(this);
-        refRemoteButton.setEnabled(false);
-        refRemoteButton.setVisible(false);
-        
-        ButtonGroup refFileSource = new ButtonGroup();
-        refFileSource.add(refLocalButton);
-        refFileSource.add(refRemoteButton);
-        
-        refPanel.add(refLocalButton);
-        refPanel.add(refRemoteButton);
         
         contents.add(refPanel);
         
@@ -212,6 +171,7 @@ public class DataConnectionDialog extends JDialog implements ActionListener {
         if (e.getActionCommand().equals("OK")){
             bamFile = bamField.getText();
             bamList = bamListField.getText();
+//            bamVCFPath = vcfbamField.getText();
             varFile = varField.getText();
             refFile = refField.getText();
             host = hostField.getText();
@@ -222,9 +182,7 @@ public class DataConnectionDialog extends JDialog implements ActionListener {
             this.dispose();
             
         } else if (e.getActionCommand().equals("Select BAM")) {
-//            JFileChooser jfc = new JFileChooser("user.dir");
-        	// for testing only
-            JFileChooser jfc = new JFileChooser("/Users/jm20/Documents/snug");
+            JFileChooser jfc = new JFileChooser("user.dir");
             jfc.setDialogTitle("Select BAM(s)");
             jfc.setApproveButtonText("Select BAM(s)");
             jfc.setApproveButtonToolTipText("Select your indexed BAM file");
@@ -234,9 +192,7 @@ public class DataConnectionDialog extends JDialog implements ActionListener {
             }
             
         } else if (e.getActionCommand().equals("Select BAM list")) {
-//          JFileChooser jfc = new JFileChooser("user.dir");
-      	// for testing only
-          JFileChooser jfc = new JFileChooser("/Users/jm20/Documents/snug");
+          JFileChooser jfc = new JFileChooser("user.dir");
           jfc.setDialogTitle("Select BAM list");
           jfc.setApproveButtonText("Select BAM list");
           jfc.setApproveButtonToolTipText("Select a file containing a list of paths to your BAM files");
@@ -246,9 +202,7 @@ public class DataConnectionDialog extends JDialog implements ActionListener {
           }
           
         } else if (e.getActionCommand().equals("Select Variants")) {
-//        	JFileChooser jfc = new JFileChooser("user.dir");
-        	// for testing only
-        	JFileChooser jfc = new JFileChooser("/Users/jm20/Documents/snug");
+        	JFileChooser jfc = new JFileChooser("user.dir");
         	jfc.setDialogTitle("Select Variant File");
             jfc.setApproveButtonText("Select Variant File");
             jfc.setApproveButtonToolTipText("Select your list of variant sites to visualise");
@@ -258,9 +212,7 @@ public class DataConnectionDialog extends JDialog implements ActionListener {
             }
             
         } else if (e.getActionCommand().equals("Select Reference")) {
-//        	JFileChooser jfc = new JFileChooser("user.dir");    
-        	// for testing only
-        	JFileChooser jfc = new JFileChooser("/Users/jm20/Documents/snug");
+        	JFileChooser jfc = new JFileChooser("user.dir");    
         	jfc.setDialogTitle("Select Reference File");
             jfc.setApproveButtonText("Select Reference File");
             jfc.setApproveButtonToolTipText("Select your indexed reference file");
@@ -269,91 +221,34 @@ public class DataConnectionDialog extends JDialog implements ActionListener {
                 refField.setText(jfc.getSelectedFile().getAbsolutePath());
             }
             
-        } else if (e.getActionCommand().equals("bamLocal")) {
-        	// activate the file browse button
-        	bamButton.setEnabled(true);
-        
-        	if (refLocalButton.isSelected() && varLocalButton.isSelected()) {
-        		hostField.setEnabled(false);
-            	portField.setEnabled(false);
-            	userField.setEnabled(false);
-            	pf.setEnabled(false);        		
-        	}
-        	
-        } else if (e.getActionCommand().equals("bamRemote")) {
-        	bamButton.setEnabled(false);
+        } else if (e.getActionCommand().equals("localFiles")) {        
+        	hostField.setEnabled(false);
+            portField.setEnabled(false);
+            userField.setEnabled(false);
+            pf.setEnabled(false);        		
+        } else if (e.getActionCommand().equals("remoteFiles")) {
         	hostField.setEnabled(true);
         	portField.setEnabled(true);
         	userField.setEnabled(true);
         	pf.setEnabled(true);        
-        	
-        } else if (e.getActionCommand().equals("bamListLocal")) {
-        	// activate the file browse button
-        	bamListButton.setEnabled(true);
-        
-        	if (refLocalButton.isSelected() && varLocalButton.isSelected()) {
-        		hostField.setEnabled(false);
-            	portField.setEnabled(false);
-            	userField.setEnabled(false);
-            	pf.setEnabled(false);        		
-        	}
-        	
-        } else if (e.getActionCommand().equals("bamListRemote")) {
-        	hostField.setEnabled(true);
-        	portField.setEnabled(true);
-        	userField.setEnabled(true);
-        	pf.setEnabled(true);        
-        	
-        } else if (e.getActionCommand().equals("varLocal")) {
-        	varButton.setEnabled(true);        	
-        	if (refLocalButton.isSelected() && bamLocalButton.isSelected()) {
-        		hostField.setEnabled(false);
-            	portField.setEnabled(false);
-            	userField.setEnabled(false);
-            	pf.setEnabled(false);        		
-        	}
-        	
-        } else if (e.getActionCommand().equals("varRemote")) {
-        	varButton.setEnabled(false);
-        	hostField.setEnabled(true);
-        	portField.setEnabled(true);
-        	userField.setEnabled(true);
-        	pf.setEnabled(true);
-        	
-        } else if (e.getActionCommand().equals("refLocal")) {
-        	refButton.setEnabled(true);
-        	if (varLocalButton.isSelected() && bamLocalButton.isSelected()) {
-        		hostField.setEnabled(false);
-            	portField.setEnabled(false);
-            	userField.setEnabled(false);
-            	pf.setEnabled(false);        		
-        	}
-        	
-        } else if (e.getActionCommand().equals("refRemote")) {
-        	refButton.setEnabled(false);
-        	hostField.setEnabled(true);
-        	portField.setEnabled(true);
-        	userField.setEnabled(true);
-        	pf.setEnabled(true);
-        	
         } else if (e.getActionCommand().equals("singleBam")) {
             bamField.setEditable(true);
             bamButton.setEnabled(true);
-            bamLocalButton.setEnabled(true);
-            bamRemoteButton.setEnabled(true);
             bamListField.setEditable(false);
             bamListButton.setEnabled(false);
-            bamListLocalButton.setEnabled(false);
-            bamListRemoteButton.setEnabled(false);        	
+//            vcfbamField.setEditable(false);
         } else if (e.getActionCommand().equals("multipleBam")) {
         	bamField.setEditable(false);
             bamButton.setEnabled(false);
-            bamLocalButton.setEnabled(false);
-            bamRemoteButton.setEnabled(false);
             bamListField.setEditable(true);
             bamListButton.setEnabled(true);
-            bamListLocalButton.setEnabled(true);
-            bamListRemoteButton.setEnabled(true);
+//            vcfbamField.setEditable(false);
+        } else if (e.getActionCommand().equals("vcfBam")) {
+        	bamField.setEditable(false);
+            bamButton.setEnabled(false);
+            bamListField.setEditable(false);
+            bamListButton.setEnabled(false);            
+//            vcfbamField.setEditable(true);            
         } else if (e.getActionCommand().equals("Cancel")){
         	this.dispose();
         }
@@ -362,25 +257,9 @@ public class DataConnectionDialog extends JDialog implements ActionListener {
 	public String getRef() {
 		return refFile.trim();
 	}
-
-	public boolean localRef() {
-		return refLocalButton.isSelected();
-	}
-	
-	public boolean remoteRef() {
-		return refRemoteButton.isSelected();
-	}
 	
 	public String getVar() {
 		return varFile.trim();
-	}
-
-	public boolean localVar() {
-		return varLocalButton.isSelected();
-	}
-	
-	public boolean remoteVar() {
-		return varRemoteButton.isSelected();
 	}
 	
 	public String getBam() {
@@ -391,12 +270,16 @@ public class DataConnectionDialog extends JDialog implements ActionListener {
 		return bamList.trim();
 	}
 	
+	public String getVCFBamPath() {
+		return bamVCFPath;
+	}
+	
 	public boolean localBam() {
-		return bamLocalButton.isSelected();
+		return localFilesButton.isSelected();
 	}
 	
 	public boolean remoteBam() {
-		return bamRemoteButton.isSelected();
+		return remoteFilesButton.isSelected();
 	}
 	
 	public boolean singleBam() {
@@ -405,6 +288,10 @@ public class DataConnectionDialog extends JDialog implements ActionListener {
 	
 	public boolean multipleBam() {
 		return multipleButton.isSelected();
+	}
+	
+	public boolean vcfBam() {
+		return vcfButton.isSelected();
 	}
 	
 	public String getHost() {
