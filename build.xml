@@ -1,0 +1,102 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<!-- Initial Set-Up -->
+
+<project name="Snug" default="main" basedir=".">
+
+	<path id="snug.root">
+		<pathelement location="${basedir}"/>
+	</path>
+
+	<path id="library.classpath">
+		<fileset dir="resources/">
+			<include name="*.jar"/>
+		</fileset>
+	</path>
+
+	<!-- =========================================================== -->
+	<!-- Initialization                                              -->
+	<!-- =========================================================== -->
+	<!-- Setup project roots -->
+	<target name="init">
+		<property name="java.home" value=""/>
+		<property name="snug.root" value="${basedir}"/>
+		<property name="snug.build" value="${snug.root}/build"/>
+		<property name="snug.classes" value="${snug.build}/classes"/>
+		<property name="snug.src" value="${snug.root}/src"/>
+		<property name="snug.lib" value="${snug.root}/resources"/>
+		<tstamp>
+			<format property="build.number" pattern="yyyyMMddHHmm"/>
+		</tstamp>
+	</target>
+
+
+	<!-- Prepare src directory for compilation step -->
+
+	<target name="prepare-compile" depends="init">
+		<mkdir dir="${snug.classes}"/>
+	</target>
+
+	<!-- Compile the application -->
+
+	<target name="compile-snug" depends="prepare-compile">
+		<javac srcdir="${snug.src}" destdir="${snug.classes}" includes="**" debug="on" source="1.6" target="1.6" includeantruntime="false">
+			<classpath refid="library.classpath"/>
+			<exclude name="snugViewerTest.java"/>
+		</javac>
+	</target>
+
+	<!-- Jar the application up -->
+	<target name="snug" depends="compile-snug">
+		<jar jarfile="Snug.jar">
+			<fileset dir="${snug.classes}">
+				<include name="**"/>
+			</fileset>
+			<manifest>
+				<attribute name="Built-By" value="${user.name}"/>
+				<attribute name="Main-Class" value="SnugViewer"/>
+				<attribute name="Rsrc-Main-Class" value="SnugViewer"/>
+			</manifest>
+			<zipfileset src="resources/slf4j-api-1.7.5.jar">
+				<exclude name="**/*.RSA, **/*.SF, **/*.DSA" />
+			</zipfileset>
+			<zipfileset src="resources/slf4j-simple-1.7.5.jar">
+				<exclude name="**/*.RSA, **/*.SF, **/*.DSA" />
+			</zipfileset>
+			<zipfileset src="resources/bcprov-jdk15on-149.jar">
+				<exclude name="**/*.RSA, **/*.SF, **/*.DSA" />
+			</zipfileset>
+			<zipfileset src="resources/jsch-0.1.50.jar">
+				<exclude name="**/*.RSA, **/*.SF, **/*.DSA" />
+			</zipfileset>
+			<zipfileset src="resources/picard-1.104.jar">
+				<exclude name="**/*.RSA, **/*.SF, **/*.DSA" />
+			</zipfileset>
+			<zipfileset src="resources/variant-1.104.jar">
+				<exclude name="**/*.RSA, **/*.SF, **/*.DSA" />
+			</zipfileset>
+			<zipfileset src="resources/tribble-1.104.jar">
+				<exclude name="**/*.RSA, **/*.SF, **/*.DSA" />
+			</zipfileset>
+			<zipfileset src="resources/sam-1.104.jar">
+				<exclude name="**/*.RSA, **/*.SF, **/*.DSA" />
+			</zipfileset>
+		</jar>
+	</target>
+
+	<target name="clean" depends="init">
+		<delete dir="${snug.build}"/>
+	</target>
+
+	<target name="main" depends="init">
+		<echo message="------------------------------------------------------------"/>
+		<echo message="welcome to snug build file"/>
+		<echo message="Usage: ant [target-name]"/>
+		<echo message="where [target-name] is one of the following targets:"/>
+		<echo message="compile-snug --> compiles the evoker classes only"/>
+		<echo message="snug --> makes the executable jar file"/>
+		<echo message="clean --> cleans up after itself removing the build directory"/>
+		<echo message="------------------------------------------------------------"/>
+	</target>
+</project>
+
